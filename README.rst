@@ -22,16 +22,16 @@ under the MIT license, and downloaded from: http://scanline.ca/ciecam02/
    :target: https://coveralls.io/r/njsmith/pycam02ucs?branch=master
 
 Documentation:
-  http://pycam02ucs.readthedocs.org/ (TODO)
+  TODO
 
 Installation:
-  ``pip install pycam02ucs`` (requires a C compiler)
+  ``python setup.py`` (requires a C compiler)
 
 Downloads:
-  http://pypi.python.org/pypi/pycam02ucs/ (TODO)
+  TODO
 
 Code and bug tracker:
-  https://github.com/njsmith/zs
+  https://github.com/njsmith/pycam02ucs
 
 Contact:
   Nathaniel J. Smith <nathaniel.smith@ed.ac.uk>

@@ -1,3 +1,6 @@
+# Stub code for potentially switching to using LCMS for CIECAM02 calculations;
+# not working or used at present.
+
 cdef extern from "lcms.h":
    #...
 

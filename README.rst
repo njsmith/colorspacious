@@ -25,7 +25,7 @@ Documentation:
   TODO
 
 Installation:
-  ``python setup.py`` (requires a C compiler)
+  ``python setup.py install`` (requires a C compiler)
 
 Downloads:
   TODO

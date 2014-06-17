@@ -1,0 +1,22 @@
+language: python
+python:
+  - 2.7
+  - 3.3
+  - 3.4
+before_install:
+  - pip install coverage numpy
+  # don't bother compiling Cython itself, we're only going to use it once
+  - pip install --install-option="--no-cython-compile" Cython
+install:
+  - python setup.py sdist
+  - mkdir empty
+  - cd empty
+  - pip install ../dist/*
+  - INSTALLDIR=$(python -c "import os; import pycam02ucs; print(os.path.dirname(pycam02ucs.__file__))")
+script:
+  - nosetests --all-modules --with-cov --cov-conf ../.coveragerc --cov-report term-missing --cov ${INSTALLDIR} pycam02ucs
+after_success:
+  - pip install coveralls && coveralls --rcfile=../.coveragerc
+notifications:
+  email:
+  - njs@pobox.com

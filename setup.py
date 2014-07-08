@@ -2,6 +2,8 @@ from setuptools import setup, Extension, find_packages
 import sys
 import os.path
 
+import numpy as np
+
 if os.path.exists(".this_is_a_checkout"):
     USE_CYTHON = True
 else:

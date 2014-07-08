@@ -19,7 +19,10 @@ if USE_CYTHON:
 else:
     cython_ext = "c"
 ext_modules = [
-    Extension("pycam02ucs._ciecam02", ["pycam02ucs/_ciecam02.%s" % (cython_ext,)])
+    Extension("pycam02ucs._ciecam02",
+              ["pycam02ucs/_ciecam02.%s" % (cython_ext,)],
+              include_dirs=[np.get_include()],
+          )
 ]
 if USE_CYTHON:
     from Cython.Build import cythonize

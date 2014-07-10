@@ -90,7 +90,7 @@ def deltaEp_JMh(J1, M1, h1, J2, M2, h2, KL, c1, c2):
     JK2, ap2, bp2 = JMh_to_JKapbp(J2, M2, h2, KL, c1, c2)
 
     return np.sqrt(
-        (JK - JK2) ** 2
+        (JK1 - JK2) ** 2
         + (ap1 - ap2) ** 2
         + (bp1 - bp2) ** 2
         )

@@ -1,3 +1,6 @@
+# Project-specific generated files
+/pycam02ucs/_ciecam02.c
+
 # Byte-compiled / optimized / DLL files
 __pycache__/
 *.py[cod]

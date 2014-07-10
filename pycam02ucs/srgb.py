@@ -70,9 +70,6 @@ def sRGB_to_XYZ(R, G, B):
                  np.row_stack([R_linear, G_linear, B_linear]))
     return XYZ[0, :], XYZ[1, :], XYZ[2, :]
 
-def _is_close(x, y, eps=0.0001):
-    return abs(x-y) <= eps
-
 # Test values calculated from http://davengrace.com/cgi-bin/cspace.pl """
 # ((gold_RGB, gold_XYZ), ...)
 _test_values = ((([18.99/255], [21.75/255], [94.93/255]),
@@ -86,15 +83,15 @@ def test_sRGB_to_XYZ():
      
     gold_X, gold_Y, gold_Z = one_XYZ
     conv_X, conv_Y, conv_Z = sRGB_to_XYZ(*one_RGB)
-    assert _is_close(gold_X, conv_X)
-    assert _is_close(gold_Y, conv_Y)
-    assert _is_close(gold_Z, conv_Z)
+    assert np.allclose(gold_X, conv_X, rtol=.0001)
+    assert np.allclose(gold_Y, conv_Y, rtol=.0001)
+    assert np.allclose(gold_Z, conv_Z, rtol=.0001)
 
     gold_X, gold_Y, gold_Z = two_XYZ
     conv_X, conv_Y, conv_Z = sRGB_to_XYZ(*two_RGB)
-    assert _is_close(gold_X, conv_X)
-    assert _is_close(gold_Y, conv_Y)
-    assert _is_close(gold_Z, conv_Z)
+    assert np.allclose(gold_X, conv_X, rtol=.0001)
+    assert np.allclose(gold_Y, conv_Y, rtol=.0001)
+    assert np.allclose(gold_Z, conv_Z, rtol=.0001)
 
 def test_XYZ_to_sRGB():
     (one_RGB, one_XYZ), (two_RGB, two_XYZ) = _test_values
@@ -102,23 +99,28 @@ def test_XYZ_to_sRGB():
     gold_R, gold_G, gold_B = one_RGB
     conv_R, conv_G, conv_B = XYZ_to_sRGB(*one_XYZ)
     print gold_R, conv_R
-    assert _is_close(gold_R, conv_R)
-    assert _is_close(gold_G, conv_G)
-    assert _is_close(gold_B, conv_B)
+    assert np.allclose(gold_R, conv_R, rtol=.0001)
+    assert np.allclose(gold_G, conv_G, rtol=.0001)
+    assert np.allclose(gold_B, conv_B, rtol=.0001)
 
     gold_R, gold_G, gold_B = two_RGB
     conv_R, conv_G, conv_B = XYZ_to_sRGB(*two_XYZ)
-    assert _is_close(gold_R, conv_R)
-    assert _is_close(gold_G, conv_G)
-    assert _is_close(gold_B, conv_B)    
+    assert np.allclose(gold_R, conv_R, rtol=.0001)
+    assert np.allclose(gold_G, conv_G, rtol=.0001)
+    assert np.allclose(gold_B, conv_B, rtol=.0001)
 
 def test_inversion():
     R, G, B = [18.99/255], [21.75/255], [94.93/255]
     X, Y, Z = sRGB_to_XYZ(R, G, B)
-    assert all(_is_close(c1, c2) for c1, c2 in
-               zip(sRGB_to_XYZ(*XYZ_to_sRGB(X, Y, Z)), (X, Y, Z)))
-    assert all(_is_close(c1, c2) for c1, c2 in
-               zip(XYZ_to_sRGB(*sRGB_to_XYZ(R, G, B)), (R, G, B)))
+    Rp, Gp, Bp = XYZ_to_sRGB(X, Y, Z)
+    assert np.allclose(R, Rp)
+    assert np.allclose(G, Gp)
+    assert np.allclose(B, Bp)
+
+    Xp, Yp, Zp = sRGB_to_XYZ(Rp, Gp, Bp)
+    assert np.allclose(X, Xp)
+    assert np.allclose(Y, Yp)
+    assert np.allclose(Z, Zp)
 
 if __name__ == '__main__':
     import nose

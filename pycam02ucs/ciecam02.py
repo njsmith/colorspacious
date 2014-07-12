@@ -473,8 +473,6 @@ def check_roundtrip(vc, XYZ):
     try:
         values = vc.XYZ_to_CIECAM02(XYZ, on_negative_A="raise")
     except NegativeAError:
-        print vc
-        print XYZ
         # don't expect to be able to round-trip these values
         return
     for kwarg1 in ["J", "Q"]:

@@ -1,4 +1,3 @@
 include LICENSE.txt README.rst
-recursive-include pycam02ucs/lib *.c *.h
 recursive-include doc *
 prune doc/_build

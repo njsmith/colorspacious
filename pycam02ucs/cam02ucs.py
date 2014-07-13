@@ -39,6 +39,7 @@ def JMh_to_sRGB(J, M, h):
 # for conversion. 
 
 def JMh_to_JKapbp(J, M, h, KL, c1, c2):
+    J, M, h = np.asarray(J), np.asarray(M), np.asarray(h)
     Jp = (1 + 100 * c1) * J / (1 + c1 * J)
     JK = Jp / KL
     Mp = (1. / c2) * np.log(1 + c2 * M)
@@ -48,6 +49,7 @@ def JMh_to_JKapbp(J, M, h, KL, c1, c2):
     return JK, ap, bp
 
 def JKapbp_to_JMh(JK, ap, bp, KL, c1, c2):
+    JK, ap, bp = np.asarray(JK), np.asarray(ap), np.asarray(bp)
     Jp = JK * KL
     J = Jp / (c1 * Jp - 100 * c1 - 1)
     # ap = Mp * cos(h)

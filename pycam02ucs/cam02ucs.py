@@ -40,7 +40,7 @@ def JMh_to_sRGB(J, M, h):
 
 def JMh_to_JKapbp(J, M, h, KL, c1, c2):
     Jp = (1 + 100 * c1) * J / (1 + c1 * J)
-    JK = Jp / K
+    JK = Jp / KL
     Mp = (1. / c2) * np.log(1 + c2 * M)
     h_rad = np.deg2rad(h)
     ap = Mp * np.cos(h_rad)

@@ -67,19 +67,26 @@ def JKapbp_to_JMh(JK, ap, bp, KL, c1, c2):
 ###########  sRGB <=> J/K a' b' ##################
 # Full pipeline from sRGB to the uniform space J/K a' b'.
 # sRGB -> XYZ -> JMh -> J/K a' b'
+# Also expose intermediate XYZ functions because they are useful.
 
 def sRGB_to_JKapbp(R, G, B, mode='UCS'):
-    KL, c1, c2 = get_KL_c1_c2(mode)
     X, Y, Z = sRGB_to_XYZ(R, G, B)
-    J, M, h = XYZ_to_JMh(X, Y, Z)
-    return JMh_to_JKapbp(J, M, h, KL, c1, c2)
+    return XYZ_to_JKapbp(X, Y, Z, mode=mode)
 
 def JKapbp_to_sRGB(JK, ap, bp, mode='UCS'):
-    KL, c1, c2 = get_KL_c1_c2(mode)
-    J, M, h = JKapbp_to_JMh(JK, ap, bp, KL, c1, c2)
-    X, Y, Z = JMh_to_XYZ(J, M, h)
+    X, Y, Z = JKapbp_to_XYZ(JK, ap, bp, mode=mode)
     return XYZ_to_sRGB(X, Y, Z)
 
+def XYZ_to_JKapbp(X, Y, Z, mode='UCS'):
+    KL, c1, c2 = get_KL_c1_c2(mode)
+    J, M, h = XYZ_to_JMh(X, Y, Z)
+    return JMh_to_JKapbp(J, M, h, KL, c1, c2)
+    
+def JKapbp_to_XYZ(JK, ap, bp, mode='UCS'):
+    KL, c1, c2 = get_KL_c1_c2(mode)
+    J, M, h = JKapbp_to_JMh(JK, ap, bp, KL, c1, c2)
+    return JMh_to_XYZ(J, M, h)
+    
 
 ########## Similarity functions   ################
 # These similarity functions are equivalent to converting the color

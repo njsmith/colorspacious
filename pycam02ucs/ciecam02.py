@@ -210,9 +210,6 @@ class ViewingConditions(object):
 
         # #### Step 6
 
-        # This is the formula given by Luo & Li (2013), by Hunt & Pointer
-        # (2011), and by the pcolor source code:
-
         # hprime = h, unless h < 20.14, in which case hprime = h + 360.
         hprime = np.select([h < h_i[0], True], [h + 360, h])
         # we use 0-based indexing, so our i is one less than the reference
@@ -221,35 +218,6 @@ class ViewingConditions(object):
         tmp = (hprime - h_i[i]) / e_i[i]
         H = H_i[i] + ((100 * tmp)
                       / (tmp + (h_i[i + 1] - hprime) / e_i[i + 1]))
-
-        # This is Fairchild's spreadsheet's formula:
-        #
-        # =IF(E53<20.14,
-        #     385.9+(14.1*(E53)/0.856)/((E53)/0.856+(20.14-E53)/0.8),
-        #  IF(E53<90,
-        #     0+(100*(E53-20.14)/0.8)/((E53-20.14)/0.8+(90-E53)/0.7),
-        #  IF(E53<164.25,
-        #     100+(100*(E53-90)/0.7)/((E53-90)/0.7+(164.25-E53)/1),
-        #  IF(E53<237.53,
-        #     200+(100*(E53-164.25)/1)/((E53-164.25)/1+(237.53-E53)/1.2),
-        #     300+(85.9*(E53-237.53)/1.2)/((E53-237.53)/1.2+(360-E53)/0.856)))))
-        #
-        # for h < 20.14, and for h > 237.53, these two formulas don't match!
-        #
-        # This matlab code:
-        #    http://www.mathworks.co.uk/matlabcentral/fileexchange/40640-computational-colour-science-using-matlab-2e/content/ciecam02.m
-        # seems to do something totally incoherent AFAICT (it indexes with a
-        # variable 'i' which is never defined?! I think the last assignment to
-        # hh is supposed to be to i...)
-        #
-        # The calculator at
-        #    http://www.hpl.hp.com/personal/Nathan_Moroney/ciecam02/ciecam02.html
-        # produces results that don't match either my code OR the Fairchild
-        # spreadsheet.
-        #
-        # So... not sure what's going on here. But for now I'll stick with the
-        # formulas that multiple people report. And I've emailed Fairchild as
-        # well.
 
         #### Step 7
 
@@ -533,11 +501,12 @@ def test_gold():
                 N_c=1.0,
                 expected=JChQMsH(h=19.55739, J=65.95523, Q=152.67220,
                                  s=52.24549, C=48.57050, M=41.67327,
-                                 # The spreadsheet says:
-                                 # H=399.56444
-                                 # but I'm pretty sure it's wrong! See
-                                 # comments above.
-                                 H=None,
+                                 # This value is based on the corrected
+                                 # version of the spreadsheet that I sent Mark
+                                 # Fairchild on 2014-07-15... the original
+                                 # spreadsheet had it wrong, so if comparing
+                                 # be careful about which version you have!
+                                 H=399.38837,
                              )),
         ]
 

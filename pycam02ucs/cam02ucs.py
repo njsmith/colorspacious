@@ -1,8 +1,8 @@
 # This file is part of pycam02ucs
 # Copyright (C) 2014 Nathaniel Smith <njs@pobox.com>
 # See file LICENSE.txt for license information.
-
 import numpy as np
+import scipy.optimize
 
 from .srgb import sRGB_to_XYZ, XYZ_to_sRGB
 from ._ciecam02 import XYZ_to_JMh
@@ -24,6 +24,9 @@ def JMh_to_XYZ(J, M, h):
 
 ###########  sRGB <=> JMh       ##################
 # via XYZ
+# J: Lightness (0-100)
+# M: Colorfulness (0-100)
+# h: Hue angle (0-360)
 
 def sRGB_to_JMh(R, G, B):
     return XYZ_to_JMh(*sRGB_to_XYZ(R, G, B))
@@ -51,20 +54,30 @@ def JMh_to_JKapbp(J, M, h, KL, c1, c2):
 def JKapbp_to_JMh(JK, ap, bp, KL, c1, c2):
     JK, ap, bp = np.asarray(JK), np.asarray(ap), np.asarray(bp)
     Jp = JK * KL
-    J = Jp / (c1 * Jp - 100 * c1 - 1)
-    # ap = Mp * cos(h)
-    # bp = Mp * sin(h)
-    # Mp = bp/sin(h)
-    # ap = (bp/sin(h)) * cos(h)
-    # ap = bp * sin(h)/cos(h)
-    # cos(h) = bp/ap * sin(h)
+    J = - Jp / (c1 * Jp - 100 * c1 - 1)
+    # a' = M' * cos(h)
+    # b' = M' * sin(h)
+    # M' = b'/sin(h)
+    # a' = (b'/sin(h)) * cos(h)
+    # a' = b' * cos(h) / sin(h)
+    # sin(h) = b'/a' * cos(h)
     # solve numerically for h in the interval of possible hue degrees
-    h = TODO
-    Mp = bp/sin(h)
-    assert np.allclose(Mp, ap/cos(h))
-    M = (np.exp(c2*Mp) - 1)/c2
+    def get_M_h(ap, bp): 
+        for interval in [(0, np.pi), (np.pi, 2*np.pi)]:
+            def h_root_fn(h):
+                return (bp/ap) * np.cos(h) - np.sin(h)
+            h_rad = scipy.optimize.brentq(h_root_fn, *interval)
+            Mp = bp/np.sin(h_rad)
+            assert np.allclose(Mp, ap/np.cos(h_rad))
+            h = np.rad2deg(h_rad)
+            M = (np.exp(c2*Mp) - 1)/c2
+            if 0 <= M <= 100:
+                return M, h
+        raise Exception("Couldn't solve for M and h given a'=%s, b'=%s"
+                        % (str(ap), str(bp)))
+    M, h = zip(*(get_M_h(ap_, bp_) for ap_, bp_ in zip(ap, bp)))
+    M, h = np.asarray(M), np.asarray(h)
     return J, M, h
-
 
 ###########  sRGB <=> J/K a' b' ##################
 # Full pipeline from sRGB to the uniform space J/K a' b'.
@@ -128,3 +141,19 @@ def deltaEp_sRGB(R1, G1, B1, R2, G2, B2, mode="UCS"):
     J2, M2, h2 = sRGB_to_JMh(R2, G2, B2)
     return deltaEp_JMh(J1, M1, h1, J2, M2, h2, KL, c1, c2)
 
+def test_inversion_JMh_JKapbp():
+    r = np.random.RandomState(0)
+    KL, c1, c2 = get_KL_c1_c2('UCS')
+    for _ in xrange(100):
+        R, G, B = r.rand(3, 10) # start with RGB to ensure real colors
+        X, Y, Z = sRGB_to_XYZ(R, G, B)
+        J, M, h = XYZ_to_JMh(X, Y, Z)
+        JK, ap, bp = JMh_to_JKapbp(J, M, h, KL, c1, c2)
+        J_new, M_new, h_new = JKapbp_to_JMh(JK, ap, bp, KL, c1, c2)
+        assert np.allclose(J, J_new)
+        assert np.allclose(M, M_new)
+        assert np.allclose(h, h_new)
+
+if __name__ == '__main__':
+    import nose
+    nose.runmodule()           

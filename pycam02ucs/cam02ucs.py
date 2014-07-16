@@ -2,7 +2,6 @@
 # Copyright (C) 2014 Nathaniel Smith <njs@pobox.com>
 # See file LICENSE.txt for license information.
 import numpy as np
-import scipy.optimize
 
 from .srgb import sRGB_to_XYZ, XYZ_to_sRGB
 from .ciecam02 import ViewingConditions
@@ -55,9 +54,9 @@ class LuoUniformSpace(object):
             + (bp1 - bp2) ** 2
             )
 
-ucs_space = LuoUniformSpace(1.00, 0.007, 0.0228)
-lcd_space = LuoUniformSpace(1.24, 0.007, 0.0363)
-scd_space = LuoUniformSpace(0.77, 0.007, 0.0053)    
+UCS_space = LuoUniformSpace(1.00, 0.007, 0.0228)
+LCD_space = LuoUniformSpace(1.24, 0.007, 0.0363)
+SCD_space = LuoUniformSpace(0.77, 0.007, 0.0053)    
 
 
 ########## Similarity functions   ################
@@ -80,11 +79,11 @@ def deltaEp_sRGB(R1, G1, B1, R2, G2, B2, mode='UCS'):
     colors.
     """
     if mode == 'UCS':
-        space = ucs_space
+        space = UCS_space
     elif mode == 'LCD':
-        space = lcd_space
+        space = LCD_space
     elif mode == 'SCD':
-        space = scd_space
+        space = SCD_space
     elif isinstance(mode, LuoUniformSpace):
         space = mode
     else:
@@ -111,11 +110,11 @@ def test_inversion_JMh_JKapbp(verbose=False):
         if verbose:
             print("JMh:", J, M, h)
 
-        JK, ap, bp = ucs_space.JMh_to_JKapbp((J, M, h))
+        JK, ap, bp = UCS_space.JMh_to_JKapbp((J, M, h))
         if verbose:
             print("JK a' b':", JK, ap, bp)
         
-        J_new, M_new, h_new = ucs_space.JKapbp_to_JMh((JK, ap, bp))
+        J_new, M_new, h_new = UCS_space.JKapbp_to_JMh((JK, ap, bp))
         if verbose:
             print("J'M'h':", J_new, M_new, h_new)
         
@@ -123,6 +122,3 @@ def test_inversion_JMh_JKapbp(verbose=False):
         assert np.allclose(M, M_new)
         assert np.allclose(h, h_new)
 
-if __name__ == '__main__':
-    import nose
-    nose.runmodule()           

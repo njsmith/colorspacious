@@ -14,9 +14,9 @@ class LuoUniformSpace(object):
         
     def JMh_to_JKapbp(self, JMh):
         JMh = np.asarray(JMh, dtype=float)
-        J = JMh[:, 0]
-        M = JMh[:, 1]
-        h = JMh[:, 2]
+        J = JMh[..., 0]
+        M = JMh[..., 1]
+        h = JMh[..., 2]
         Jp = (1 + 100 * self.c1) * J / (1 + self.c1 * J)
         JK = Jp / self.KL
         Mp = (1. / self.c2) * np.log(1 + self.c2 * M)
@@ -27,9 +27,9 @@ class LuoUniformSpace(object):
 
     def JKapbp_to_JMh(self, JKapbp):
         JKapbp = np.asarray(JKapbp)
-        JK = JKapbp[:, 0]
-        ap = JKapbp[:, 1]
-        bp = JKapbp[:, 2]
+        JK = JKapbp[..., 0]
+        ap = JKapbp[..., 1]
+        bp = JKapbp[..., 2]
         Jp = JK * self.KL
         J = - Jp / (self.c1 * Jp - 100 * self.c1 - 1)
         # a' = M' * cos(h)
@@ -113,10 +113,10 @@ def test_inversion_JMh_JKapbp(verbose=False):
         for _ in xrange(100):
             if num_dims == 1:
                 RGB = map(lambda x: [x], r.rand(3))
-                XYZ = np.asarray(sRGB_to_XYZ(*RGB)).T
+                XYZ = np.asarray(sRGB_to_XYZ(*RGB)).T * 100
             elif num_dims == 2:
                 RGB = r.rand(100, 3) # start with RGB to ensure real colors
-                XYZ = np.asarray(sRGB_to_XYZ(*RGB.T)).T
+                XYZ = np.asarray(sRGB_to_XYZ(*RGB.T)).T * 100
             JMh = np.array(_XYZ_to_JMh(XYZ))
             if verbose:
                 print("JMh:", JMh)

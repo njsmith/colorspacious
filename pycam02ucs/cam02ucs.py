@@ -3,7 +3,7 @@
 # See file LICENSE.txt for license information.
 import numpy as np
 
-from .srgb import sRGB_to_XYZ, XYZ_to_sRGB
+from .srgb import sRGB_to_XYZ
 from .ciecam02 import ViewingConditions
 
 class LuoUniformSpace(object):
@@ -12,18 +12,24 @@ class LuoUniformSpace(object):
         self.c1 = c1
         self.c2 = c2
         
-    def JMh_to_JKapbp(self, (J, M, h)):
-        J, M, h = np.asarray(J), np.asarray(M), np.asarray(h)
+    def JMh_to_JKapbp(self, JMh):
+        JMh = np.asarray(JMh, dtype=float)
+        J = JMh[:, 0]
+        M = JMh[:, 1]
+        h = JMh[:, 2]
         Jp = (1 + 100 * self.c1) * J / (1 + self.c1 * J)
         JK = Jp / self.KL
         Mp = (1. / self.c2) * np.log(1 + self.c2 * M)
         h_rad = np.deg2rad(h)
         ap = Mp * np.cos(h_rad)
         bp = Mp * np.sin(h_rad)
-        return JK, ap, bp
+        return np.array([JK, ap, bp]).T
 
-    def JKapbp_to_JMh(self, (JK, ap, bp)):
-        JK, ap, bp = np.asarray(JK), np.asarray(ap), np.asarray(bp)
+    def JKapbp_to_JMh(self, JKapbp):
+        JKapbp = np.asarray(JKapbp)
+        JK = JKapbp[:, 0]
+        ap = JKapbp[:, 1]
+        bp = JKapbp[:, 2]
         Jp = JK * self.KL
         J = - Jp / (self.c1 * Jp - 100 * self.c1 - 1)
         # a' = M' * cos(h)
@@ -33,20 +39,20 @@ class LuoUniformSpace(object):
         # a' = b' * cos(h) / sin(h)
         # sin(h) = b'/a' * cos(h), 0 <= h <= 2pi and 0 <= M <= 100
         # Thanks Mathematica!
-        h_rad = np.zeros(len(bp))
-        h_rad_bp_negative = 2*np.pi + 2*np.arctan(-np.sqrt(1+ap**2/bp**2) - ap/bp)
+        h_rad_bp_negative = 2*np.pi+2*np.arctan(-np.sqrt(1+ap**2/bp**2) - ap/bp)
         h_rad_bp_positive = 2*np.arctan(np.sqrt(1+ap**2/bp**2) - ap/bp)
-        h_rad[np.where(bp < 0)] = h_rad_bp_negative[np.where(bp<0)]
-        h_rad[np.where(bp >= 0)] = h_rad_bp_positive[np.where(bp>=0)]
+        h_rad = np.select([bp<0, bp>=0], [h_rad_bp_negative, h_rad_bp_positive])
         Mp = bp/np.sin(h_rad)
         assert np.allclose(Mp, ap/np.cos(h_rad))
         h = np.rad2deg(h_rad)
         M = (np.exp(self.c2*Mp) - 1) / self.c2
-        return J, M, h
+        return np.array([J, M, h]).T
             
-    def deltaEp_JMh(self, (J1, M1, h1), (J2, M2, h2)):
-        JK1, ap1, bp1 = self.JMh_to_JKapbp((J1, M1, h1))
-        JK2, ap2, bp2 = self.JMh_to_JKapbp((J2, M2, h2))
+    def deltaEp_JMh(self, JMh1, JMh2):
+        JMh1 = np.asarray(JMh1)
+        JMh2 = np.asarray(JMh2)
+        JK1, ap1, bp1 = self.JMh_to_JKapbp(JMh1).T
+        JK2, ap2, bp2 = self.JMh_to_JKapbp(JMh2).T
 
         return np.sqrt(
             (JK1 - JK2) ** 2
@@ -61,7 +67,7 @@ SCD_space = LuoUniformSpace(0.77, 0.007, 0.0053)
 
 ########## Similarity functions   ################
     
-def deltaEp_sRGB(R1, G1, B1, R2, G2, B2, mode='UCS'):
+def deltaEp_sRGB(RGB1, RGB2, mode='UCS'):
     """Computes the :math:`\delta E'` distance between pairs of sRGB colors.
 
     :math:`\delta E'` is color difference metric defined by Eq. (4) of Luo et
@@ -74,9 +80,8 @@ def deltaEp_sRGB(R1, G1, B1, R2, G2, B2, mode='UCS'):
     single generic "uniform color space" which performs well across all their
     data sets). You can also pass in any LuoUniformSpace object as the mode.
 
-    This function is vectorized, i.e., R1, G1, B1, R2, G2, B2 may be vectors,
-    in which case we compute the distance between corresponding pairs of
-    colors.
+    This function is vectorized, i.e., RGB1, RGB2 may be (n,3) vectors, in 
+    which case we compute the distance between corresponding pairs of colors.
     """
     if mode == 'UCS':
         space = UCS_space
@@ -89,36 +94,50 @@ def deltaEp_sRGB(R1, G1, B1, R2, G2, B2, mode='UCS'):
     else:
         raise ValueError("Invalid mode passed to deltaEp_sRGB")
         
-    X1, Y1, Z1 = srgb.sRGB_to_XYZ(R1, G1, B1)
-    X2, Y2, Z2 = srgb.sRGB_to_XYZ(R2, G2, B2)
-    J1, M1, h1 = _XYZ_to_JMh((X1, Y1, Z1))
-    J2, M2, h2 = _XYZ_to_JMh((X2, Y2, Z2))
-    return space.deltaEp_JMh((J1, M1, h1), (J2, M2, h2))
+    XYZ1 = srgb.sRGB_to_XYZ(RGB1)
+    XYZ2 = srgb.sRGB_to_XYZ(RGB2)
+    JMh1 = _XYZ_to_JMh(XYZ1)
+    JMh2 = _XYZ_to_JMh(XYZ2)
+    return space.deltaEp_JMh(JMh1, JMh2)
 
 def _XYZ_to_JMh(XYZ):
-    XYZ = np.asarray(XYZ).T
+    XYZ = np.asarray(XYZ)
     vc = ViewingConditions.sRGB
     ciecam02_color = vc.XYZ_to_CIECAM02(XYZ)
-    return ciecam02_color.J, ciecam02_color.M, ciecam02_color.h
+    return np.array([ciecam02_color.J, ciecam02_color.M, ciecam02_color.h]).T
 
 def test_inversion_JMh_JKapbp(verbose=False):
     r = np.random.RandomState(0)
-    for _ in xrange(100):
-        R, G, B = r.rand(3, 100) # start with RGB to ensure real colors
-        X, Y, Z = sRGB_to_XYZ(R, G, B)
-        J, M, h = _XYZ_to_JMh((X, Y, Z))
-        if verbose:
-            print("JMh:", J, M, h)
+    
+    def test(space, num_dims):
+        for _ in xrange(100):
+            if num_dims == 1:
+                RGB = map(lambda x: [x], r.rand(3))
+                XYZ = np.asarray(sRGB_to_XYZ(*RGB)).T
+            elif num_dims == 2:
+                RGB = r.rand(100, 3) # start with RGB to ensure real colors
+                XYZ = np.asarray(sRGB_to_XYZ(*RGB.T)).T
+            JMh = np.array(_XYZ_to_JMh(XYZ))
+            if verbose:
+                print("JMh:", JMh)
 
-        JK, ap, bp = UCS_space.JMh_to_JKapbp((J, M, h))
-        if verbose:
-            print("JK a' b':", JK, ap, bp)
+            JKapbp = UCS_space.JMh_to_JKapbp(JMh)
+            if verbose:
+                print("JK a' b':", JKapbp)
         
-        J_new, M_new, h_new = UCS_space.JKapbp_to_JMh((JK, ap, bp))
-        if verbose:
-            print("J'M'h':", J_new, M_new, h_new)
+            JMh_new = UCS_space.JKapbp_to_JMh(JKapbp)
+            if verbose:
+                print("J'M'h':", J_new, M_new, h_new)
         
-        assert np.allclose(J, J_new)
-        assert np.allclose(M, M_new)
-        assert np.allclose(h, h_new)
+            assert np.allclose(JMh, JMh_new)
+
+    test(UCS_space, 1)
+    test(UCS_space, 2)
+
+    test(LCD_space, 1)
+    test(LCD_space, 2)
+
+    test(SCD_space, 1)
+    test(SCD_space, 2)
+    
 

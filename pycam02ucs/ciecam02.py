@@ -514,7 +514,7 @@ def test_gold():
         vc = ViewingConditions(t.XYZ_w, t.Y_b, t.L_A,
                                Surround(F=t.F, c=t.c, N_c=t.N_c))
         got = vc.XYZ_to_CIECAM02(t.XYZ)
-        for i in xrange(len(got)):
+        for i in range(len(got)):
             if t.expected[i] is not None:
                 assert np.allclose(got[i], t.expected[i], atol=1e-05)
         check_roundtrip(vc, t.XYZ)

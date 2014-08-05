@@ -1,101 +1,73 @@
 # This file is part of pycam02ucs
 # Copyright (C) 2014 Nathaniel Smith <njs@pobox.com>
 # See file LICENSE.txt for license information.
-
 import numpy as np
 
-from .srgb import sRGB_to_XYZ, XYZ_to_sRGB
-from ._ciecam02 import XYZ_to_JMh
+from .srgb import sRGB_to_XYZ
+from .ciecam02 import ViewingConditions
 
-KL_c1_c2 = {'LCD': (0.77, 0.007, 0.0053),
-            'SCD': (1.24, 0.007, 0.0363),
-            'UCS': (1.00, 0.007, 0.0228),
-             }
+class LuoUniformSpace(object):
+    def __init__(self, KL, c1, c2):
+        self.KL = KL
+        self.c1 = c1
+        self.c2 = c2
+        
+    def JMh_to_JKapbp(self, JMh):
+        JMh = np.asarray(JMh, dtype=float)
+        J = JMh[..., 0]
+        M = JMh[..., 1]
+        h = JMh[..., 2]
+        Jp = (1 + 100 * self.c1) * J / (1 + self.c1 * J)
+        JK = Jp / self.KL
+        Mp = (1. / self.c2) * np.log(1 + self.c2 * M)
+        h_rad = np.deg2rad(h)
+        ap = Mp * np.cos(h_rad)
+        bp = Mp * np.sin(h_rad)
+        return np.array([JK, ap, bp]).T
 
-def get_KL_c1_c2(mode):
-    if mode in KL_c1_c2:
-        return KL_c1_c2[mode]
-    else:
-        raise ValueError("mode must be one of: %s" % " ".join(KL_c1_c2))
+    def JKapbp_to_JMh(self, JKapbp):
+        JKapbp = np.asarray(JKapbp)
+        JK = JKapbp[..., 0]
+        ap = JKapbp[..., 1]
+        bp = JKapbp[..., 2]
+        Jp = JK * self.KL
+        J = - Jp / (self.c1 * Jp - 100 * self.c1 - 1)
+        # a' = M' * cos(h)
+        # b' = M' * sin(h)
+        # M' = b'/sin(h)
+        # a' = (b'/sin(h)) * cos(h)
+        # a' = b' * cos(h) / sin(h)
+        # sin(h) = b'/a' * cos(h), 0 <= h <= 2pi and 0 <= M <= 100
+        # Thanks Mathematica!
+        h_rad_bp_negative = 2*np.pi+2*np.arctan(-np.sqrt(1+ap**2/bp**2) - ap/bp)
+        h_rad_bp_positive = 2*np.arctan(np.sqrt(1+ap**2/bp**2) - ap/bp)
+        h_rad = np.select([bp<0, bp>=0], [h_rad_bp_negative, h_rad_bp_positive])
+        Mp = bp/np.sin(h_rad)
+        assert np.allclose(Mp, ap/np.cos(h_rad))
+        h = np.rad2deg(h_rad)
+        M = (np.exp(self.c2*Mp) - 1) / self.c2
+        return np.array([J, M, h]).T
+            
+    def deltaEp_JMh(self, JMh1, JMh2):
+        JMh1 = np.asarray(JMh1)
+        JMh2 = np.asarray(JMh2)
+        JK1, ap1, bp1 = self.JMh_to_JKapbp(JMh1).T
+        JK2, ap2, bp2 = self.JMh_to_JKapbp(JMh2).T
 
-def JMh_to_XYZ(J, M, h):
-    raise NotImplementedError    
+        return np.sqrt(
+            (JK1 - JK2) ** 2
+            + (ap1 - ap2) ** 2
+            + (bp1 - bp2) ** 2
+            )
 
-
-###########  sRGB <=> JMh       ##################
-# via XYZ
-
-def sRGB_to_JMh(R, G, B):
-    return XYZ_to_JMh(*sRGB_to_XYZ(R, G, B))
-
-def JMh_to_sRGB(J, M, h):
-    return sRGB_to_XYZ(*JMh_to_XYZ(J, M, h))
-
-
-#############  JMh <=> J/K a' b' #################
-# Equations (4) from Luo et al (2006)
-# J/K a' b' is a Euclidean space corresponding to Luo et al (2006)'s perceptual
-# distance metrics. Which metric depends on the values of KL, c1, and c2 used
-# for conversion. 
-
-def JMh_to_JKapbp(J, M, h, KL, c1, c2):
-    Jp = (1 + 100 * c1) * J / (1 + c1 * J)
-    JK = Jp / K
-    Mp = (1. / c2) * np.log(1 + c2 * M)
-    h_rad = np.deg2rad(h)
-    ap = Mp * np.cos(h_rad)
-    bp = Mp * np.sin(h_rad)
-    return JK, ap, bp
-
-def JKapbp_to_JMh(JK, ap, bp, KL, c1, c2):
-    Jp = JK * KL
-    J = Jp / (c1 * Jp - 100 * c1 - 1)
-    # ap = Mp * cos(h)
-    # bp = Mp * sin(h)
-    # Mp = bp/sin(h)
-    # ap = (bp/sin(h)) * cos(h)
-    # ap = bp * sin(h)/cos(h)
-    # cos(h) = bp/ap * sin(h)
-    # solve numerically for h in the interval of possible hue degrees
-    h = TODO
-    Mp = bp/sin(h)
-    assert np.allclose(Mp, ap/cos(h))
-    M = (np.exp(c2*Mp) - 1)/c2
-    return J, M, h
-
-
-###########  sRGB <=> J/K a' b' ##################
-# Full pipeline from sRGB to the uniform space J/K a' b'.
-# sRGB -> XYZ -> JMh -> J/K a' b'
-
-def sRGB_to_JKapbp(R, G, B, mode='UCS'):
-    KL, c1, c2 = get_KL_c1_c2(mode)
-    X, Y, Z = sRGB_to_XYZ(R, G, B)
-    J, M, h = XYZ_to_JMh(X, Y, Z)
-    return JMh_to_JKapbp(J, M, h, KL, c1, c2)
-
-def JKapbp_to_sRGB(JK, ap, bp, mode='UCS'):
-    KL, c1, c2 = get_KL_c1_c2(mode)
-    J, M, h = JKapbp_to_JMh(JK, ap, bp, KL, c1, c2)
-    X, Y, Z = JMh_to_XYZ(J, M, h)
-    return XYZ_to_sRGB(X, Y, Z)
+UCS_space = LuoUniformSpace(1.00, 0.007, 0.0228)
+LCD_space = LuoUniformSpace(1.24, 0.007, 0.0363)
+SCD_space = LuoUniformSpace(0.77, 0.007, 0.0053)    
 
 
 ########## Similarity functions   ################
-# These similarity functions are equivalent to converting the color
-# to J/K a' b' and taking Euclidean distance.
     
-def deltaEp_JMh(J1, M1, h1, J2, M2, h2, KL, c1, c2):
-    JK1, ap1, bp1 = JMh_to_JKapbp(J1, M1, h1, KL, c1, c2)
-    JK2, ap2, bp2 = JMh_to_JKapbp(J2, M2, h2, KL, c1, c2)
-
-    return np.sqrt(
-        (JK1 - JK2) ** 2
-        + (ap1 - ap2) ** 2
-        + (bp1 - bp2) ** 2
-        )
-
-def deltaEp_sRGB(R1, G1, B1, R2, G2, B2, mode="UCS"):
+def deltaEp_sRGB(RGB1, RGB2, mode='UCS'):
     """Computes the :math:`\delta E'` distance between pairs of sRGB colors.
 
     :math:`\delta E'` is color difference metric defined by Eq. (4) of Luo et
@@ -106,16 +78,62 @@ def deltaEp_sRGB(R1, G1, B1, R2, G2, B2, mode="UCS"):
     difference" judgement data sets), "SCD" (which Luo et all tuned on their
     "small color difference" data sets), and "UCS" (which attempts define a
     single generic "uniform color space" which performs well across all their
-    data sets).
+    data sets). You can also pass in any LuoUniformSpace object as the mode.
 
-    This function is vectorized, i.e., R1, G1, B1, R2, G2, B2 may be vectors,
-    in which case we compute the distance between corresponding pairs of
-    colors.
+    This function is vectorized, i.e., RGB1, RGB2 may be (n,3) vectors, in 
+    which case we compute the distance between corresponding pairs of colors.
     """
+    if mode == 'UCS':
+        space = UCS_space
+    elif mode == 'LCD':
+        space = LCD_space
+    elif mode == 'SCD':
+        space = SCD_space
+    elif isinstance(mode, LuoUniformSpace):
+        space = mode
+    else:
+        raise ValueError("Invalid mode passed to deltaEp_sRGB")
+        
+    XYZ1 = srgb.sRGB_to_XYZ(RGB1)
+    XYZ2 = srgb.sRGB_to_XYZ(RGB2)
+    JMh1 = _XYZ_to_JMh(XYZ1)
+    JMh2 = _XYZ_to_JMh(XYZ2)
+    return space.deltaEp_JMh(JMh1, JMh2)
 
-    # Table II in Luo et al (2006)
-    KL, c1, c2 = get_KL_c1_c2(mode)
-    J1, M1, h1 = sRGB_to_JMh(R1, G1, B1)
-    J2, M2, h2 = sRGB_to_JMh(R2, G2, B2)
-    return deltaEp_JMh(J1, M1, h1, J2, M2, h2, KL, c1, c2)
+def _XYZ_to_JMh(XYZ):
+    XYZ = np.asarray(XYZ)
+    vc = ViewingConditions.sRGB
+    ciecam02_color = vc.XYZ_to_CIECAM02(XYZ)
+    return np.array([ciecam02_color.J, ciecam02_color.M, ciecam02_color.h]).T
+
+def test_inversion_JMh_JKapbp(verbose=False):
+    r = np.random.RandomState(0)
+    
+    def test(space, num_dims):
+        for _ in range(100):
+            RGB = r.rand(*(10,) * (num_dims - 1) + (3,))
+            XYZ = np.asarray(sRGB_to_XYZ(RGB)) * 100
+            JMh = np.array(_XYZ_to_JMh(XYZ))
+            if verbose:
+                print("JMh:", JMh)
+
+            JKapbp = UCS_space.JMh_to_JKapbp(JMh)
+            if verbose:
+                print("JK a' b':", JKapbp)
+        
+            JMh_new = UCS_space.JKapbp_to_JMh(JKapbp)
+            if verbose:
+                print("J'M'h':", J_new, M_new, h_new)
+        
+            assert np.allclose(JMh, JMh_new)
+
+    test(UCS_space, 1)
+    test(UCS_space, 2)
+
+    test(LCD_space, 1)
+    test(LCD_space, 2)
+
+    test(SCD_space, 1)
+    test(SCD_space, 2)
+    
 

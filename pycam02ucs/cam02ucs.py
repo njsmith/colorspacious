@@ -110,7 +110,7 @@ def test_inversion_JMh_JKapbp(verbose=False):
     r = np.random.RandomState(0)
     
     def test(space, num_dims):
-        for _ in xrange(100):
+        for _ in range(100):
             RGB = r.rand(*(10,) * (num_dims - 1) + (3,))
             XYZ = np.asarray(sRGB_to_XYZ(RGB)) * 100
             JMh = np.array(_XYZ_to_JMh(XYZ))

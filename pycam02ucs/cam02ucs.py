@@ -38,13 +38,12 @@ class LuoUniformSpace(object):
         # a' = (b'/sin(h)) * cos(h)
         # a' = b' * cos(h) / sin(h)
         # sin(h) = b'/a' * cos(h), 0 <= h <= 2pi and 0 <= M <= 100
-        # Thanks Mathematica!
-        h_rad_bp_negative = 2*np.pi+2*np.arctan(-np.sqrt(1+ap**2/bp**2) - ap/bp)
-        h_rad_bp_positive = 2*np.arctan(np.sqrt(1+ap**2/bp**2) - ap/bp)
-        h_rad = np.select([bp<0, bp>=0], [h_rad_bp_negative, h_rad_bp_positive])
+        # -> tan(h) = b'/a'
+        # -> h = arctan2(b', a')
+        h_rad = np.arctan2(bp, ap)
         Mp = bp/np.sin(h_rad)
         assert np.allclose(Mp, ap/np.cos(h_rad))
-        h = np.rad2deg(h_rad)
+        h = np.rad2deg(h_rad) % 360
         M = (np.exp(self.c2*Mp) - 1) / self.c2
         return np.array([J, M, h]).T
             

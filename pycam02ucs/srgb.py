@@ -38,27 +38,28 @@ XYZ_to_sRGB_matrix = np.array([
 
 def XYZ_to_sRGB(XYZ):
     """ Convert XYZ to sRGB, where XYZ are normalized so that reference white
-    D65 is X=.9505, Y=1, Z=1.0890 """
-    XYZ = np.asarray(XYZ)
-    RGB_linear = np.dot(XYZ_to_sRGB_matrix, XYZ.T).T
+    D65 is X=95.05, Y=100, Z=108.90 """
+    XYZ = np.asarray(XYZ, dtype=float)
+    RGB_linear = np.dot(XYZ_to_sRGB_matrix, XYZ.T / 100).T
     RGB = C_srgb(RGB_linear)
     return RGB
     
-# RGB in 0-to-1 range; XYZ with its well-defined range (roughly 0-1)
+# RGB in 0-to-1 range; XYZ with its well-defined range (roughly 0-100)
 def sRGB_to_XYZ(RGB):
     RGB = np.asarray(RGB)
     if np.any(RGB < 0) or np.any(RGB > 1):
         raise ValueError("RGB values must be in between 0 and 1")
     RGB_linear = C_linear(RGB)
     XYZ = np.dot(sRGB_to_XYZ_matrix, RGB_linear.T).T
+    XYZ *= 100
     return XYZ
 
 # Test values calculated from http://davengrace.com/cgi-bin/cspace.pl """
 # ((gold_RGB, gold_XYZ), ...)
 _test_values = (([18.99/255, 21.75/255, 94.93/255],  # RGB
-                 [0.0261219, 0.0152732, 0.1096471]), # XYZ
+                 [2.61219, 1.52732, 10.96471]), # XYZ
                 ([55.12/255, 33.14/255, 32.19/255],  # RGB
-                 [0.0239318, 0.0201643, 0.0164315]), # XYZ
+                 [2.39318, 2.01643, 1.64315]), # XYZ
                  )
         
 def test_sRGB_to_XYZ():

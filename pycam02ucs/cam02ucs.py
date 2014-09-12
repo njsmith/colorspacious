@@ -111,7 +111,7 @@ def test_inversion_JMh_JKapbp(verbose=False):
     def test(space, num_dims):
         for _ in range(100):
             RGB = r.rand(*(10,) * (num_dims - 1) + (3,))
-            XYZ = np.asarray(sRGB_to_XYZ(RGB)) * 100
+            XYZ = np.asarray(sRGB_to_XYZ(RGB))
             JMh = np.array(_XYZ_to_JMh(XYZ))
             if verbose:
                 print("JMh:", JMh)

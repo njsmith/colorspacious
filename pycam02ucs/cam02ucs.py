@@ -42,7 +42,8 @@ class LuoUniformSpace(object):
         # -> h = arctan2(b', a')
         h_rad = np.arctan2(bp, ap)
         Mp = bp/np.sin(h_rad)
-        assert np.allclose(Mp, ap/np.cos(h_rad))
+        assert np.allclose(Mp[~np.isnan(Mp)],
+                           (ap/np.cos(h_rad))[~np.isnan(ap/np.cos(h_rad))])
         h = np.rad2deg(h_rad) % 360
         M = (np.exp(self.c2*Mp) - 1) / self.c2
         return np.array([J, M, h]).T

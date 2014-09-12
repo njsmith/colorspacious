@@ -13,8 +13,8 @@ color difference" (SCD) metrics estimated by the same publication. The
 UCS ("uniform color space") metric is defined as a compromise between
 these two.
 
-CIECAM02 calculations are performed using code released by Billy Biggs
-under the MIT license, and downloaded from: http://scanline.ca/ciecam02/
+We also have a complete CIECAM02 implementation. Maybe that should get
+higher billing.
 
 .. image:: https://travis-ci.org/njsmith/pycam02ucs.png?branch=master
    :target: https://travis-ci.org/njsmith/pycam02ucs
@@ -37,7 +37,6 @@ Contact:
   Nathaniel J. Smith <nathaniel.smith@ed.ac.uk>
 
 Developer dependencies (only needed for hacking on source):
-  * Cython: needed to build from checkout
   * nose: needed to run tests
 
 License:

@@ -43,7 +43,7 @@ class LuoUniformSpace(object):
         h_rad = np.arctan2(bp, ap)
         Mp = bp/np.sin(h_rad)
         Mpp = ap/np.cos(h_rad)
-        assert np.allclose(Mp[~np.isnan(Mp)], Mpp[~np.isnan(Mpp)])
+        np.testing.assert_allclose(Mp, Mpp)
         h = np.rad2deg(h_rad) % 360
         M = (np.exp(self.c2*Mp) - 1) / self.c2
         return np.array([J, M, h]).T
@@ -114,6 +114,11 @@ def test_inversion_JMh_JKapbp(verbose=False):
             RGB = r.rand(*(10,) * (num_dims - 1) + (3,))
             XYZ = np.asarray(sRGB_to_XYZ(RGB))
             JMh = np.array(_XYZ_to_JMh(XYZ))
+            if JMh.ndim == 1:
+                JMh[0] = np.nan # test nans
+            elif JMh.ndim == 2:
+                JMh[0, 0] = np.nan
+                
             if verbose:
                 print("JMh:", JMh)
 
@@ -122,10 +127,7 @@ def test_inversion_JMh_JKapbp(verbose=False):
                 print("JK a' b':", JKapbp)
         
             JMh_new = UCS_space.JKapbp_to_JMh(JKapbp)
-            if verbose:
-                print("J'M'h':", J_new, M_new, h_new)
-        
-            assert np.allclose(JMh, JMh_new)
+            np.testing.assert_allclose(JMh, JMh_new)
 
     test(UCS_space, 1)
     test(UCS_space, 2)
@@ -135,5 +137,6 @@ def test_inversion_JMh_JKapbp(verbose=False):
 
     test(SCD_space, 1)
     test(SCD_space, 2)
-    
+
+
 

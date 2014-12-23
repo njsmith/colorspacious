@@ -94,8 +94,8 @@ def deltaEp_sRGB(RGB1, RGB2, mode='UCS'):
     else:
         raise ValueError("Invalid mode passed to deltaEp_sRGB")
         
-    XYZ1 = srgb.sRGB_to_XYZ(RGB1)
-    XYZ2 = srgb.sRGB_to_XYZ(RGB2)
+    XYZ1 = sRGB_to_XYZ(RGB1)
+    XYZ2 = sRGB_to_XYZ(RGB2)
     JMh1 = _XYZ_to_JMh(XYZ1)
     JMh2 = _XYZ_to_JMh(XYZ2)
     return space.deltaEp_JMh(JMh1, JMh2)

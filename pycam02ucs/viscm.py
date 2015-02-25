@@ -152,31 +152,41 @@ def viscm(cm, name=None, N=256, N_dots=50, show_gamut=False):
     ax.set_ylabel("b' (blue -> yellow)")
     ax.set_zlabel("J'/K (white -> black)")
 
-    # Draw and extremely crude wireframe indicating the sRGB gamut.
-    # We just draw the 8 corners of the sRGB cube, and lines connecting
-    # them. This is rather misleading, because it makes the gamut look like a
-    # rectalinear shape, when in fact it's a blobby curvy thing. Better would
-    # be to sample some points along the boundary of sRGB space (i.e., at
-    # least one coordinate == 0 or 1), and then triangulate them with qhull
-    # and draw the resulting wireframe. (jet in particular spends quite a bit
-    # of time *outside* the crudge rectalinear gamut.)
+    # Draw a wireframe indicating the sRGB gamut
     if show_gamut:
-        gamut_edges = set()
-        def draw_gamut_edge(rgb1, rgb2):
-            if (rgb1, rgb2) in gamut_edges:
-                return
-            JKapbp1 = _CIECAM02_to_JKapbp(_sRGB_to_CIECAM02(rgb1))
-            JKapbp2 = _CIECAM02_to_JKapbp(_sRGB_to_CIECAM02(rgb2))
-            JKapbp = np.row_stack((JKapbp1, JKapbp2))
-            ax.plot(JKapbp[:, 1], JKapbp[:, 2], JKapbp[:, 0], "k:")
-            gamut_edges.add((rgb1, rgb2))
-        for r in 0, 1:
-            for g in 0, 1:
-                for b in 0, 1:
-                    #print(_CIECAM02_to_JKapbp(_sRGB_to_CIECAM02((r, g, b))))
-                    draw_gamut_edge((r, g, b), (not r, g, b))
-                    draw_gamut_edge((r, g, b), (r, not g, b))
-                    draw_gamut_edge((r, g, b), (r, g, not b))
+        GAMUT_POINTS = 20
+        step = 1.0 / GAMUT_POINTS
+        sRGB_quads = []
+        # each entry in 'quads' is a 4x3 array where each row contains the
+        # coordinates of a corner point
+        for fixed in 0, 1:
+            for i in range(GAMUT_POINTS):
+                for j in range(GAMUT_POINTS):
+                    sRGB_quads.append([[fixed, i * step, j * step],
+                                       [fixed, (i+1) * step, j * step],
+                                       [fixed, i * step, (j+1) * step],
+                                       [fixed, (i+1) *step, (j+1) * step]])
+                    sRGB_quads.append([[i * step, fixed, j * step],
+                                       [(i+1) * step, fixed, j * step],
+                                       [i * step, fixed, (j+1) * step],
+                                       [(i+1) *step, fixed, (j+1) * step]])
+                    sRGB_quads.append([[i * step, j * step, fixed],
+                                       [(i+1) * step, j * step, fixed],
+                                       [i * step, (j+1) * step, fixed],
+                                       [(i+1) *step, (j+1) * step, fixed]])
+        sRGB_quads = np.asarray(sRGB_quads)
+        # work around colorspace transform bugginess in handling high-dim
+        # arrays
+        sRGB_quads_2d = sRGB_quads.reshape((-1, 3))
+        CIECAM02_quads_2d = _sRGB_to_CIECAM02(sRGB_quads_2d)
+        JKapbp_quads_2d = _CIECAM02_to_JKapbp(CIECAM02_quads_2d)
+        JKapbp_quads = JKapbp_quads_2d.reshape((-1, 4, 3))
+        gamut_patch = mpl_toolkits.mplot3d.art3d.Poly3DCollection(
+            JKapbp_quads[:, :, [1, 2, 0]])
+        gamut_patch.set_facecolor([0.5, 0.5, 0.5, 0.1])
+        gamut_patch.set_edgecolor([0.2, 0.2, 0.2, 0.1])
+        ax.add_collection3d(gamut_patch)
+
     # sRGB corners: a' goes from -37.4 to 45
     ax.set_xlim(-38, 46)
     # b' goes from -46.5 to 42

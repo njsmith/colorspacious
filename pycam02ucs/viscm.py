@@ -7,12 +7,18 @@
 
 import numpy as np
 
-import mpl_toolkits.mplot3d
-import matplotlib.pyplot as plt
+# Most of this file doesn't actually need matpotlib, and I'm too lazy ATM to
+# get matplotlib installed on travis. So this lets the travis build go
+# through.
+try:
+    import matplotlib.pyplot as plt
+    import mpl_toolkits.mplot3d
+except ImportError:
+    pass
 
 from pycam02ucs import ViewingConditions
 from pycam02ucs.cam02ucs import deltaEp_sRGB, UCS_space
-from pycam02ucs.srgb import sRGB_to_XYZ
+from pycam02ucs.srgb import sRGB_to_XYZ, XYZ_to_sRGB
 
 def _sRGB_to_CIECAM02(RGB):
     XYZ = sRGB_to_XYZ(RGB)
@@ -21,6 +27,15 @@ def _sRGB_to_CIECAM02(RGB):
 def _CIECAM02_to_JKapbp(ciecam02):
     JMh = np.column_stack((ciecam02.J, ciecam02.M, ciecam02.h))
     return UCS_space.JMh_to_JKapbp(JMh)
+
+def _JKapbp_to_JMh(JKapbp):
+    return UCS_space.JKapbp_to_JMh(JKapbp)
+
+def _JMh_to_sRGB(JMh):
+    XYZ = ViewingConditions.sRGB.CIECAM02_to_XYZ(J=JMh[..., 0],
+                                                 M=JMh[..., 1],
+                                                 h=JMh[..., 2])
+    return XYZ_to_sRGB(XYZ)
 
 def _show_cmap(ax, rgb):
     ax.imshow(rgb[np.newaxis, ...],
@@ -74,16 +89,20 @@ TRITANOMALY_10 = [[1.255528, -0.076749, -0.178779],
 def _apply_rgb_mat(mat, rgb):
     return np.clip(np.dot(mat, rgb.T).T, 0, 1)
 
+# sRGB corners: a' goes from -37.4 to 45
+AP_LIM = (-38, 46)
+# b' goes from -46.5 to 42
+BP_LIM = (-47, 43)
+# J'/K goes from 0 to 100
+JK_LIM = (-1, 101)
+
 def _setup_JKapbp_axis(ax):
     ax.set_xlabel("a' (green -> red)")
     ax.set_ylabel("b' (blue -> yellow)")
     ax.set_zlabel("J'/K (white -> black)")
-    # sRGB corners: a' goes from -37.4 to 45
-    ax.set_xlim(-38, 46)
-    # b' goes from -46.5 to 42
-    ax.set_ylim(-47, 43)
-    # J'/K goes from 0 to 100
-    ax.set_zlim(-1, 101)
+    ax.set_xlim(*AP_LIM)
+    ax.set_ylim(*BP_LIM)
+    ax.set_zlim(*JK_LIM)
 
 # N=256 matches the default quantization for LinearSegmentedColormap, which
 # reduces quantization/aliasing artifacts (esp. in the perceptual deltas
@@ -217,3 +236,35 @@ def sRGB_gamut_patch(resolution=20):
     gamut_patch.set_facecolor(sRGB_values)
     gamut_patch.set_edgecolor(sRGB_values)
     return gamut_patch
+
+def sRGB_gamut_JK_slice(JK,
+                        ap_lim=(-50, 50), bp_lim=(-50, 50), resolution=200):
+    ap_grid, bp_grid = np.mgrid[ap_lim[0] : ap_lim[1] : resolution * 1j,
+                                bp_lim[0] : bp_lim[1] : resolution * 1j]
+    JK_grid = JK * np.ones((resolution, resolution))
+    JKapbp = np.concatenate((JK_grid[:, :, np.newaxis],
+                             ap_grid[:, :, np.newaxis],
+                             bp_grid[:, :, np.newaxis]),
+                            axis=2)
+    JMh = _JKapbp_to_JMh(JKapbp)
+    sRGB = _JMh_to_sRGB(JMh)
+    sRGB[np.any((sRGB < 0) | (sRGB > 1), axis=-1)] = np.nan
+    return sRGB
+
+def draw_sRGB_gamut_JK_slice(ax, JK, ap_lim=(-50, 50), bp_lim=(-50, 50),
+                             **kwargs):
+    sRGB = sRGB_gamut_JK_slice(JK, ap_lim=ap_lim, bp_lim=bp_lim, **kwargs)
+    im = ax.imshow(sRGB, aspect="equal",
+                   extent=ap_lim + bp_lim, origin="lower")
+    # Pure hue angles from CIECAM-02
+    for color, angle in [("r", 20.14),
+                         ("y", 90.00),
+                         ("g", 164.25),
+                         ("b", 237.53),
+                     ]:
+        x = np.cos(np.deg2rad(angle))
+        y = np.sin(np.deg2rad(angle))
+        ax.plot([0, x * 1000], [0, y * 1000], color + "--")
+    ax.set_xlim(ap_lim)
+    ax.set_ylim(bp_lim)
+    return im

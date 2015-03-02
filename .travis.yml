@@ -3,6 +3,9 @@ python:
   - 2.7
   - 3.3
   - 3.4
+# give up the ability to use 'sudo' in exchange for getting access to
+# the newer/faster/better-scaling travis infrastructure
+sudo: false
 before_install:
   - pip install coverage numpy nose-cov
   # don't bother compiling Cython itself, we're only going to use it once

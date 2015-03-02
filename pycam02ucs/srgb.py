@@ -40,7 +40,9 @@ def XYZ_to_sRGB(XYZ):
     """ Convert XYZ to sRGB, where XYZ are normalized so that reference white
     D65 is X=95.05, Y=100, Z=108.90 """
     XYZ = np.asarray(XYZ, dtype=float)
-    RGB_linear = np.dot(XYZ_to_sRGB_matrix, XYZ.T / 100).T
+    # this is broadcasting matrix * array-of-vectors, where the vector is the
+    # last dim
+    RGB_linear = np.einsum("ij,...j->...i", XYZ_to_sRGB_matrix, XYZ / 100)
     RGB = C_srgb(RGB_linear)
     return RGB
     
@@ -50,7 +52,9 @@ def sRGB_to_XYZ(RGB):
     if np.any(RGB < 0) or np.any(RGB > 1):
         raise ValueError("RGB values must be in between 0 and 1")
     RGB_linear = C_linear(RGB)
-    XYZ = np.dot(sRGB_to_XYZ_matrix, RGB_linear.T).T
+    # this is broadcasting matrix * array-of-vectors, where the vector is the
+    # last dim
+    XYZ = np.einsum("ij,...j->...i", sRGB_to_XYZ_matrix, RGB_linear)
     XYZ *= 100
     return XYZ
 
@@ -76,6 +80,13 @@ def test_sRGB_to_XYZ():
     both_conv_XYZ = sRGB_to_XYZ(both_RGB)
     assert np.allclose(both_XYZ, both_conv_XYZ, rtol=.0001)
 
+    # make sure we can handle higher dimensional arrays
+    # last dimension is always 3, other ones just get vectorized over
+    RGB_3d = both_RGB[np.newaxis, ...]
+    XYZ_3d = both_XYZ[np.newaxis, ...]
+    conv_XYZ_3d = sRGB_to_XYZ(RGB_3d)
+    assert np.allclose(XYZ_3d, conv_XYZ_3d, rtol=0.0001)
+
 def test_XYZ_to_sRGB():
     (one_RGB, one_XYZ), (two_RGB, two_XYZ) = _test_values
 
@@ -89,6 +100,13 @@ def test_XYZ_to_sRGB():
     both_XYZ = np.asarray([one_XYZ, two_XYZ])
     both_conv_RGB = XYZ_to_sRGB(both_XYZ)
     assert np.allclose(both_RGB, both_conv_RGB, rtol=.0001)
+
+    # make sure we can handle higher dimensional arrays
+    # last dimension is always 3, other ones just get vectorized over
+    RGB_3d = both_RGB[np.newaxis, ...]
+    XYZ_3d = both_XYZ[np.newaxis, ...]
+    conv_RGB_3d = XYZ_to_sRGB(XYZ_3d)
+    assert np.allclose(RGB_3d, conv_RGB_3d, rtol=0.0001)
 
 def test_inversion():
     RGB = [18.99/255, 21.75/255, 94.93/255]

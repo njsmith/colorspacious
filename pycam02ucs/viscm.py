@@ -268,3 +268,15 @@ def draw_sRGB_gamut_JK_slice(ax, JK, ap_lim=(-50, 50), bp_lim=(-50, 50),
     ax.set_xlim(ap_lim)
     ax.set_ylim(bp_lim)
     return im
+
+# def sRGB_gamut_J_slice(J,
+#                        ap_lim=(-50, 50), bp_lim=(-50, 50), resolution=200):
+#     a_grid, b_grid = np.mgrid[ap_lim[0] : ap_lim[1] : resolution * 1j,
+#                               bp_lim[0] : bp_lim[1] : resolution * 1j]
+#     J_grid = J * np.ones((resolution, resolution))
+#     h = np.rad2deg(np.arctan2(b_grid, a_grid))
+#     M = np.hypot(a_grid, b_grid)
+#     XYZ = ViewingConditions.sRGB.CIECAM02_to_XYZ(J=J_grid, M=M, h=h)
+#     sRGB = XYZ_to_sRGB(XYZ)
+#     sRGB[np.any((sRGB < 0) | (sRGB > 1), axis=-1)] = np.nan
+#     return sRGB

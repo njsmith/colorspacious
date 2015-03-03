@@ -42,7 +42,7 @@ def XYZ_to_sRGB(XYZ):
     XYZ = np.asarray(XYZ, dtype=float)
     # this is broadcasting matrix * array-of-vectors, where the vector is the
     # last dim
-    RGB_linear = np.einsum("ij,...j->...i", XYZ_to_sRGB_matrix, XYZ / 100)
+    RGB_linear = np.einsum("...ij,...j->...i", XYZ_to_sRGB_matrix, XYZ / 100)
     RGB = C_srgb(RGB_linear)
     return RGB
     
@@ -54,7 +54,7 @@ def sRGB_to_XYZ(RGB):
     RGB_linear = C_linear(RGB)
     # this is broadcasting matrix * array-of-vectors, where the vector is the
     # last dim
-    XYZ = np.einsum("ij,...j->...i", sRGB_to_XYZ_matrix, RGB_linear)
+    XYZ = np.einsum("...ij,...j->...i", sRGB_to_XYZ_matrix, RGB_linear)
     XYZ *= 100
     return XYZ
 

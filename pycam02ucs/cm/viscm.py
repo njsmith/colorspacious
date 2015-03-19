@@ -107,7 +107,9 @@ def _setup_JKapbp_axis(ax):
 
 
 def _vis_axes(editor=False):
-    grid = GridSpec(5, 7)
+    grid = GridSpec(5, 7,
+                    width_ratios=[1, 1, 1, 1, 1, 1, 6],
+                    height_ratios=[1, 1, 1, 1, 2])
     axes = {'cmap': grid[0, :3],
             'deltas': grid[0, 3:6],
             'deuteranomaly': grid[1, :3],

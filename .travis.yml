@@ -19,7 +19,7 @@ before_install:
   - conda info -a
   - conda create -q -n testenv python=$TRAVIS_PYTHON_VERSION
   - source activate testenv
-  - conda install pip nose coverage numpy matplotlib Cython
+  - conda install pip nose coverage nose-cov numpy matplotlib Cython
 install:
   - python setup.py sdist
   - mkdir empty

@@ -322,21 +322,36 @@ def draw_sRGB_gamut_JK_slice(ax, JK, ap_lim=(-50, 50), bp_lim=(-50, 50),
 #     return sRGB
 
 class viscm_editor(object):
-    def __init__(self):
-        fig, (ax0, ax1) = plt.subplots(2, 1)
+    def __init__(self, min_JK=15, max_JK=95):
+        self.min_JK = min_JK
+        self.max_JK = max_JK
+
+        self.fig, (self.bezier_ax, self.cm_ax) = plt.subplots(2, 1)
 
         from .bezierbuilder import BezierBuilder
         from matplotlib.lines import Line2D
 
-        line, = ax0.plot([-4, 40, -9.6], [-34, 4.6, 41], ls='--', c='#666666',
-                         marker='x', mew=2, mec='#204a87')
+        line, = self.bezier_ax.plot([-4, 40, -9.6], [-34, 4.6, 41],
+                                    ls='--', c='#666666',
+                                    marker='x', mew=2, mec='#204a87')
 
-        draw_sRGB_gamut_JK_slice(ax0, 50)
-        ax0.set_xlim(-100, 100)
-        ax0.set_ylim(-100, 100)
+        draw_sRGB_gamut_JK_slice(self.bezier_ax, 50)
+        self.bezier_ax.set_xlim(-100, 100)
+        self.bezier_ax.set_ylim(-100, 100)
 
         self.bezier = BezierBuilder(line, update_callback=self.update)
-        self.bezier._update_bezier()
+
+        self.update()
 
     def update(self):
-        print(np.sum(self.bezier.bezier_curve.get_data()))
+        ap, bp = self.bezier.bezier_curve.get_data()
+        assert ap.ndim == bp.ndim == 1
+        JK = np.linspace(self.min_JK, self.max_JK, num=ap.shape[0])
+
+        JMh = _JKapbp_to_JMh(np.column_stack((JK, ap, bp)))
+        sRGB = _JMh_to_sRGB(JMh)
+        print(sRGB.shape)
+
+        # XX FIXME: update a single image instead of calling imshow() again on
+        # every update
+        _show_cmap(self.cm_ax, sRGB)

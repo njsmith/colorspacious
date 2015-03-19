@@ -1,3 +1,4 @@
+# coding=utf8
 # BézierBuilder
 #
 # Copyright (c) 2013, Juan Luis Cano Rodríguez <juanlu001@gmail.com>
@@ -49,7 +50,8 @@ class BezierBuilder(object):
     """Bézier curve interactive builder.
 
     """
-    def __init__(self, control_polygon, ax_bernstein=None, update_callback=None):
+    def __init__(self, control_polygon, ax_bernstein=None,
+                 update_callback=lambda: None):
         """Constructor.
 
         Receives the initial control polygon of the curve.
@@ -79,6 +81,8 @@ class BezierBuilder(object):
         self._ctrl_is_held = False
         self._index = None  # Active vertex
 
+        self._update_bezier()
+
     def on_button_press(self, event):
         # Ignore clicks outside axes
         if event.inaxes != self.ax_main: return
@@ -95,6 +99,8 @@ class BezierBuilder(object):
 
     def on_button_release(self, event):
         if event.button != 1: return
+        if self._index is not None:
+            self.update_callback()
         self._index = None
 
     def on_key_press(self, event):
@@ -129,6 +135,8 @@ class BezierBuilder(object):
         self._update_bernstein()
         self._update_bezier()
 
+        self.update_callback()
+
     def _remove_point(self, event):
         del self.xp[self._index]
         del self.yp[self._index]
@@ -138,16 +146,14 @@ class BezierBuilder(object):
         self._update_bernstein()
         self._update_bezier()
 
+        self.update_callback()
+
     def _build_bezier(self):
         x, y = Bezier(list(zip(self.xp, self.yp))).T
         return x, y
 
     def _update_bezier(self):
         self.bezier_curve.set_data(*self._build_bezier())
-
-        if self.update_callback:
-            self.update_callback()
-
         self.canvas.draw()
 
     def _update_bernstein(self):

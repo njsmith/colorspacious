@@ -223,6 +223,8 @@ def viscm(cm, name=None, N=256, N_dots=50, show_gamut=False,
                        marker='x', mew=2, mec='#204a87')
 
         draw_sRGB_gamut_JK_slice(ax, 50)
+        ax.set_xlim(-100, 100)
+        ax.set_ylim(-100, 100)
 
         bezier = BezierBuilder(line)
         print(bezier.bezier_curve.get_data())

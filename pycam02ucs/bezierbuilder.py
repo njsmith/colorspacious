@@ -49,7 +49,7 @@ class BezierBuilder(object):
     """Bézier curve interactive builder.
 
     """
-    def __init__(self, control_polygon, ax_bernstein):
+    def __init__(self, control_polygon, ax_bernstein=None):
         """Constructor.
 
         Receives the initial control polygon of the curve.
@@ -77,6 +77,8 @@ class BezierBuilder(object):
         self._shift_is_held = False
         self._ctrl_is_held = False
         self._index = None  # Active vertex
+
+        self._update_bezier()
 
     def on_button_press(self, event):
         # Ignore clicks outside axes
@@ -149,6 +151,10 @@ class BezierBuilder(object):
         N = len(self.xp) - 1
         t = np.linspace(0, 1, num=200)
         ax = self.ax_bernstein
+
+        if not ax:
+            return
+
         ax.clear()
         for kk in range(N + 1):
             ax.plot(t, Bernstein(N, kk)(t))

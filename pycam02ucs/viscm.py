@@ -13,6 +13,7 @@ import numpy as np
 try:
     import matplotlib.pyplot as plt
     import mpl_toolkits.mplot3d
+    from matplotlib.gridspec import GridSpec
 except ImportError:
     pass
 
@@ -104,32 +105,53 @@ def _setup_JKapbp_axis(ax):
     ax.set_ylim(*BP_LIM)
     ax.set_zlim(*JK_LIM)
 
+
+def _vis_axes(editor=False):
+    grid = GridSpec(5, 7)
+    axes = {'cmap': grid[0, :3],
+            'deltas': grid[0, 3:6],
+            'deuteranomaly': grid[1, :3],
+            'deuteranopia': grid[1, 3:6],
+            'protanomaly': grid[2, :3],
+            'protanopia': grid[2, 3:6],
+            'lightness': grid[3, :2],
+            'colourfulness': grid[3, 2:4],
+            'hue': grid[3, 4:6]}
+
+    if editor:
+        axes['editor'] = grid[:, 6]
+
+    axes = {key: plt.subplot(value) for (key, value) in axes.items()}
+    axes['gamut'] = plt.subplot(grid[4, :6], projection='3d')
+
+    return axes
+
 # N=256 matches the default quantization for LinearSegmentedColormap, which
 # reduces quantization/aliasing artifacts (esp. in the perceptual deltas
 # plot).
-def viscm(cm, name=None, N=256, N_dots=50, show_gamut=False):
+def viscm(cm, name=None, N=256, N_dots=50, show_gamut=False,
+          axes=None, editor=False):
     if isinstance(cm, str):
         cm = plt.get_cmap(cm)
     if name is None:
         name = cm.name
+
+    if axes is None:
+        fig = plt.figure()
+        fig.suptitle("Colormap evaluation: %s" % (name,), fontsize=24)
+        axes = _vis_axes(editor=editor)
 
     x = np.linspace(0, 1, N)
     x_dots = np.linspace(0, 1, N_dots)
     RGB = cm(x)[:, :3]
     RGB_dots = cm(x_dots)[:, :3]
 
-    fig = plt.figure()
-    fig.subplots_adjust(top=0.9, bottom=0.01, left=0.05, right=0.95,
-                        wspace=0.3)
-
-    fig.suptitle("Colormap evaluation: %s" % (name,), fontsize=24)
-
-    ax = fig.add_subplot(8, 2, 1)
+    ax = axes['cmap']
     _show_cmap(ax, RGB)
     ax.set_title("The colormap in its glory")
     ax.get_yaxis().set_visible(False)
 
-    ax = fig.add_subplot(8, 2, 2)
+    ax = axes['deltas']
     local_deltas = N * deltaEp_sRGB(RGB[:-1, :], RGB[1:, :])
     ax.plot(x[1:], local_deltas)
     arclength = np.sum(local_deltas) / N
@@ -140,8 +162,7 @@ def viscm(cm, name=None, N=256, N_dots=50, show_gamut=False):
     #         verticalalignment="top",
     #         transform=ax.transAxes)
 
-    def anom(i, mat, name):
-        ax = fig.add_subplot(8, 2, 3 + i)
+    def anom(ax, mat, name):
         _show_cmap(ax, _apply_rgb_mat(mat, RGB))
         ax.text(0.95, 0.05, name,
                 horizontalalignment="right",
@@ -150,26 +171,28 @@ def viscm(cm, name=None, N=256, N_dots=50, show_gamut=False):
         ax.get_xaxis().set_visible(False)
         ax.get_yaxis().set_visible(False)
 
-    anom(0, DEUTERANOMALY_05, "Moderate deuteranomaly")
-    anom(1, DEUTERANOMALY_10, "Complete deuteranopia")
+    anom(axes['deuteranomaly'], DEUTERANOMALY_05, "Moderate deuteranomaly")
+    anom(axes['deuteranopia'], DEUTERANOMALY_10, "Complete deuteranopia")
 
-    anom(2, PROTANOMALY_05, "Moderate protanomaly")
-    anom(3, PROTANOMALY_10, "Complete protanopia")
+    anom(axes['protanomaly'], PROTANOMALY_05, "Moderate protanomaly")
+    anom(axes['protanopia'], PROTANOMALY_10, "Complete protanopia")
 
     ciecam02 = _sRGB_to_CIECAM02(RGB)
-    ax = fig.add_subplot(8, 3, 10)
+    ax = axes['lightness']
     ax.plot(x, ciecam02.J, label="Lightness (J)")
     ax.set_title("Lightness (J)")
     ax.set_ylim(0, 105)
-    ax = fig.add_subplot(8, 3, 11)
+
+    ax = axes['colourfulness']
     ax.plot(x, ciecam02.M, label="Colourfulness (M)")
     ax.set_title("Colourfulness (M)")
-    ax = fig.add_subplot(8, 3, 12)
+
+    ax = axes['hue']
     ax.plot(x, ciecam02.h, label="Hue angle (h)")
     ax.set_title("Hue angle (h)")
 
     JKapbp = _CIECAM02_to_JKapbp(ciecam02)
-    ax = fig.add_subplot(2, 1, 2, projection="3d")
+    ax = axes['gamut']
     ax.plot(JKapbp[:, 1], JKapbp[:, 2], JKapbp[:, 0])
     JKapbp_dots = _CIECAM02_to_JKapbp(_sRGB_to_CIECAM02(RGB_dots))
     ax.scatter(JKapbp_dots[:, 1],
@@ -190,6 +213,19 @@ def viscm(cm, name=None, N=256, N_dots=50, show_gamut=False):
         ax.add_collection3d(gamut_patch)
 
     _setup_JKapbp_axis(ax)
+
+    if editor:
+        from .bezierbuilder import BezierBuilder
+        from matplotlib.lines import Line2D
+
+        ax = axes['editor']
+        line, = ax.plot([-4, 40, -9.6], [-34, 4.6, 41], ls='--', c='#666666',
+                       marker='x', mew=2, mec='#204a87')
+
+        draw_sRGB_gamut_JK_slice(ax, 50)
+
+        bezier = BezierBuilder(line)
+        print(bezier.bezier_curve.get_data())
 
 def sRGB_gamut_patch(resolution=20):
     step = 1.0 / resolution

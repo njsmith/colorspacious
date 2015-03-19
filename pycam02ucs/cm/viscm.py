@@ -320,3 +320,23 @@ def draw_sRGB_gamut_JK_slice(ax, JK, ap_lim=(-50, 50), bp_lim=(-50, 50),
 #     sRGB = XYZ_to_sRGB(XYZ)
 #     sRGB[np.any((sRGB < 0) | (sRGB > 1), axis=-1)] = np.nan
 #     return sRGB
+
+class viscm_editor(object):
+    def __init__(self):
+        fig, (ax0, ax1) = plt.subplots(2, 1)
+
+        from .bezierbuilder import BezierBuilder
+        from matplotlib.lines import Line2D
+
+        line, = ax0.plot([-4, 40, -9.6], [-34, 4.6, 41], ls='--', c='#666666',
+                         marker='x', mew=2, mec='#204a87')
+
+        draw_sRGB_gamut_JK_slice(ax0, 50)
+        ax0.set_xlim(-100, 100)
+        ax0.set_ylim(-100, 100)
+
+        self.bezier = BezierBuilder(line, update_callback=self.update)
+        self.bezier._update_bezier()
+
+    def update(self):
+        print(np.sum(self.bezier.bezier_curve.get_data()))

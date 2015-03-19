@@ -49,7 +49,7 @@ class BezierBuilder(object):
     """Bézier curve interactive builder.
 
     """
-    def __init__(self, control_polygon, ax_bernstein=None):
+    def __init__(self, control_polygon, ax_bernstein=None, update_callback=None):
         """Constructor.
 
         Receives the initial control polygon of the curve.
@@ -61,6 +61,7 @@ class BezierBuilder(object):
         self.canvas = control_polygon.figure.canvas
         self.ax_main = control_polygon.axes
         self.ax_bernstein = ax_bernstein
+        self.update_callback = update_callback
 
         # Event handler for mouse clicking
         self.canvas.mpl_connect('button_press_event', self.on_button_press)
@@ -77,8 +78,6 @@ class BezierBuilder(object):
         self._shift_is_held = False
         self._ctrl_is_held = False
         self._index = None  # Active vertex
-
-        self._update_bezier()
 
     def on_button_press(self, event):
         # Ignore clicks outside axes
@@ -145,6 +144,10 @@ class BezierBuilder(object):
 
     def _update_bezier(self):
         self.bezier_curve.set_data(*self._build_bezier())
+
+        if self.update_callback:
+            self.update_callback()
+
         self.canvas.draw()
 
     def _update_bernstein(self):

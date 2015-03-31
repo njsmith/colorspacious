@@ -120,9 +120,6 @@ def _vis_axes(editor=False):
             'colourfulness': grid[3, 2:4],
             'hue': grid[3, 4:6]}
 
-    if editor:
-        axes['editor'] = grid[:, 6]
-
     axes = {key: plt.subplot(value) for (key, value) in axes.items()}
     axes['gamut'] = plt.subplot(grid[4, :6], projection='3d')
 
@@ -131,8 +128,7 @@ def _vis_axes(editor=False):
 # N=256 matches the default quantization for LinearSegmentedColormap, which
 # reduces quantization/aliasing artifacts (esp. in the perceptual deltas
 # plot).
-def viscm(cm, name=None, N=256, N_dots=50, show_gamut=False,
-          axes=None, editor=False):
+def viscm(cm, name=None, N=256, N_dots=50, show_gamut=False, axes=None):
     if isinstance(cm, str):
         cm = plt.get_cmap(cm)
     if name is None:
@@ -215,21 +211,6 @@ def viscm(cm, name=None, N=256, N_dots=50, show_gamut=False,
         ax.add_collection3d(gamut_patch)
 
     _setup_JKapbp_axis(ax)
-
-    if editor:
-        from .bezierbuilder import BezierBuilder
-        from matplotlib.lines import Line2D
-
-        ax = axes['editor']
-        line, = ax.plot([-4, 40, -9.6], [-34, 4.6, 41], ls='--', c='#666666',
-                       marker='x', mew=2, mec='#204a87')
-
-        draw_sRGB_gamut_JK_slice(ax, 50)
-        ax.set_xlim(-100, 100)
-        ax.set_ylim(-100, 100)
-
-        bezier = BezierBuilder(line)
-        print(bezier.bezier_curve.get_data())
 
 def sRGB_gamut_patch(resolution=20):
     step = 1.0 / resolution
@@ -328,30 +309,71 @@ class viscm_editor(object):
 
         self.fig, (self.bezier_ax, self.cm_ax) = plt.subplots(2, 1)
 
-        from .bezierbuilder import BezierBuilder
-        from matplotlib.lines import Line2D
 
-        line, = self.bezier_ax.plot([-4, 40, -9.6], [-34, 4.6, 41],
-                                    ls='--', c='#666666',
-                                    marker='x', mew=2, mec='#204a87')
+        from .bezierbuilder import BezierModel, BezierBuilder
+
+        xp = [-4, 40, -9.6]
+        yp = [-34, 4.6, 41]
+        self.bezier_model = BezierModel(xp, yp)
 
         draw_sRGB_gamut_JK_slice(self.bezier_ax, 50)
         self.bezier_ax.set_xlim(-100, 100)
         self.bezier_ax.set_ylim(-100, 100)
 
-        self.bezier = BezierBuilder(line, update_callback=self.update)
+        self.bezier_builder = BezierBuilder(self.bezier_ax, self.bezier_model)
 
-        self.update()
+        self.cmap_model = BezierCMapModel(self.bezier_model, min_JK, max_JK)
 
-    def update(self):
-        ap, bp = self.bezier.bezier_curve.get_data()
+        self.cmap_view = BezierCMapView(self.cm_ax, self.cmap_model)
+
+from .minimvc import Trigger
+
+class BezierCMapModel(object):
+    def __init__(self, bezier_model, min_JK, max_JK):
+        self.bezier_model = bezier_model
+        self.min_JK = min_JK
+        self.max_JK = max_JK
+        self.trigger = Trigger()
+
+        self.bezier_model.trigger.add_callback(self._refresh)
+
+    def _refresh(self):
+        self.trigger.fire()
+
+    def get_sRGB(self, num=200):
+        ap, bp = self.bezier_model.get_bezier_points(num)
         assert ap.ndim == bp.ndim == 1
         JK = np.linspace(self.min_JK, self.max_JK, num=ap.shape[0])
 
         JMh = _JKapbp_to_JMh(np.column_stack((JK, ap, bp)))
         sRGB = _JMh_to_sRGB(JMh)
-        print(sRGB.shape)
+        oog = np.any((sRGB > 1) | (sRGB < 0), axis=-1)
+        sRGB[oog, :] = np.nan
+        return sRGB, oog
 
-        # XX FIXME: update a single image instead of calling imshow() again on
-        # every update
-        _show_cmap(self.cm_ax, sRGB)
+class BezierCMapView(object):
+    def __init__(self, ax, cmap_model):
+        self.ax = ax
+        self.cmap_model = cmap_model
+
+        rgb_display, oog_display = self._drawable_arrays()
+        self.image = self.ax.imshow(rgb_display, extent=(0, 1, 0, 0.2))
+        self.gamut_alert_image = self.ax.imshow(oog_display,
+                                                extent=(0, 1, 0.05, 0.15))
+        self.ax.set_xlim(0, 1)
+        self.ax.set_ylim(0, 0.2)
+
+        self.cmap_model.trigger.add_callback(self._refresh)
+
+    def _drawable_arrays(self):
+        rgb, oog = self.cmap_model.get_sRGB()
+        rgb_display = rgb[np.newaxis, ...]
+        oog_display = np.empty((1, rgb.shape[0], 4))
+        oog_display[...] = [0, 0, 0, 0]
+        oog_display[:, oog, :] = [0, 1, 1, 1]
+        return rgb_display, oog_display
+
+    def _refresh(self):
+        rgb_display, oog_display = self._drawable_arrays()
+        self.image.set_data(rgb_display)
+        self.gamut_alert_image.set_data(oog_display)

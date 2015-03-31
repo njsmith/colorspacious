@@ -45,7 +45,6 @@ import matplotlib.pyplot as plt
 
 from matplotlib.lines import Line2D
 
-
 class BezierBuilder(object):
     """Bézier curve interactive builder.
 
@@ -68,8 +67,6 @@ class BezierBuilder(object):
         # Event handler for mouse clicking
         self.canvas.mpl_connect('button_press_event', self.on_button_press)
         self.canvas.mpl_connect('button_release_event', self.on_button_release)
-        self.canvas.mpl_connect('key_press_event', self.on_key_press)
-        self.canvas.mpl_connect('key_release_event', self.on_key_release)
         self.canvas.mpl_connect('motion_notify_event', self.on_motion_notify)
 
         # Create Bézier curve
@@ -77,8 +74,6 @@ class BezierBuilder(object):
                              c=control_polygon.get_markeredgecolor())
         self.bezier_curve = self.ax_main.add_line(line_bezier)
 
-        self._shift_is_held = False
-        self._ctrl_is_held = False
         self._index = None  # Active vertex
 
         self._update_bezier()
@@ -86,34 +81,21 @@ class BezierBuilder(object):
     def on_button_press(self, event):
         # Ignore clicks outside axes
         if event.inaxes != self.ax_main: return
-        if self._shift_is_held or self._ctrl_is_held:
-            res, ind = self.control_polygon.contains(event)
-            if res:
-                self._index = ind['ind'][0]
-                if self._ctrl_is_held:
-                    self._remove_point(event)
-            else:
-                return
-        else:
+        res, ind = self.control_polygon.contains(event)
+        if res and event.key is None:
+            # Grabbing a point to drag
+            self._index = ind["ind"][0]
+        if res and event.key == "control":
+            # Control-click deletes
+            del self.xp[ind["ind"][0]]
+            del self.yp[ind["ind"][0]]
+            self._refresh()
+        if event.key == "shift":
             self._add_point(event)
 
     def on_button_release(self, event):
         if event.button != 1: return
-        if self._index is not None:
-            self.update_callback()
         self._index = None
-
-    def on_key_press(self, event):
-        if event.key == 'shift':
-            self._shift_is_held = True
-        elif event.key == 'control':
-            self._ctrl_is_held = True
-
-    def on_key_release(self, event):
-        if event.key == 'shift':
-            self._shift_is_held = False
-        elif event.key == 'control':
-            self._ctrl_is_held = False
 
     def on_motion_notify(self, event):
         if event.inaxes != self.ax_main: return
@@ -127,25 +109,28 @@ class BezierBuilder(object):
         self._update_bezier()
 
     def _add_point(self, event):
-        self.xp.append(event.xdata)
-        self.yp.append(event.ydata)
-        self.control_polygon.set_data(self.xp, self.yp)
+        # Adding a new point. Find the two closest points and insert it in
+        # between them.
+        total_squared_dists = []
+        for i in range(len(self.xp) - 1):
+            dist = (event.xdata - self.xp[i]) ** 2
+            dist += (event.ydata - self.yp[i]) ** 2
+            dist += (event.xdata - self.xp[i + 1]) ** 2
+            dist += (event.ydata - self.yp[i + 1]) ** 2
+            total_squared_dists.append(dist)
+        best = np.argmin(total_squared_dists)
 
-        # Rebuild Bézier curve and update canvas
+        self.xp.insert(best + 1, event.xdata)
+        self.yp.insert(best + 1, event.ydata)
+
+        self._refresh()
+
+    def _refresh(self):
+        # Reflect any changes in xp, yp to the control polygon, rebuild Bézier
+        # curve and update canvas.
+        self.control_polygon.set_data(self.xp, self.yp)
         self._update_bernstein()
         self._update_bezier()
-
-        self.update_callback()
-
-    def _remove_point(self, event):
-        del self.xp[self._index]
-        del self.yp[self._index]
-        self.control_polygon.set_data(self.xp, self.yp)
-
-        # Rebuild Bézier curve and update canvas
-        self._update_bernstein()
-        self._update_bezier()
-
         self.update_callback()
 
     def _build_bezier(self):
@@ -220,7 +205,7 @@ if __name__ == '__main__':
     bezier_builder = BezierBuilder(line, ax2)
 
     fig.suptitle("BézierBuilder", fontsize=24)
-    fig.text(0.052, 0.07, "Click to add points, Shift + Click & Drag to move them, "
+    fig.text(0.052, 0.07, "Drag to move points, Shift + Click to add them, "
              "Ctrl + Click to remove them.", color="#333333")
     fig.text(0.052, 0.03, "(c) 2013, Juan Luis Cano Rodríguez. Code available at "
              "https://github.com/Pybonacci/bezierbuilder/", color="#666666")

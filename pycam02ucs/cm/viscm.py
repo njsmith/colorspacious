@@ -272,11 +272,7 @@ def sRGB_gamut_JK_slice(JK,
     sRGB[np.any((sRGB < 0) | (sRGB > 1), axis=-1)] = np.nan
     return sRGB
 
-def draw_sRGB_gamut_JK_slice(ax, JK, ap_lim=(-50, 50), bp_lim=(-50, 50),
-                             **kwargs):
-    sRGB = sRGB_gamut_JK_slice(JK, ap_lim=ap_lim, bp_lim=bp_lim, **kwargs)
-    im = ax.imshow(sRGB, aspect="equal",
-                   extent=ap_lim + bp_lim, origin="lower")
+def draw_pure_hue_angles(ax):
     # Pure hue angles from CIECAM-02
     for color, angle in [("r", 20.14),
                          ("y", 90.00),
@@ -286,6 +282,13 @@ def draw_sRGB_gamut_JK_slice(ax, JK, ap_lim=(-50, 50), bp_lim=(-50, 50),
         x = np.cos(np.deg2rad(angle))
         y = np.sin(np.deg2rad(angle))
         ax.plot([0, x * 1000], [0, y * 1000], color + "--")
+
+def draw_sRGB_gamut_JK_slice(ax, JK, ap_lim=(-50, 50), bp_lim=(-50, 50),
+                             **kwargs):
+    sRGB = sRGB_gamut_JK_slice(JK, ap_lim=ap_lim, bp_lim=bp_lim, **kwargs)
+    im = ax.imshow(sRGB, aspect="equal",
+                   extent=ap_lim + bp_lim, origin="lower")
+    draw_pure_hue_angles(ax)
     ax.set_xlim(ap_lim)
     ax.set_ylim(bp_lim)
     return im
@@ -315,16 +318,23 @@ class viscm_editor(object):
         xp = [-4, 40, -9.6]
         yp = [-34, 4.6, 41]
         self.bezier_model = BezierModel(xp, yp)
+        self.cmap_model = BezierCMapModel(self.bezier_model, min_JK, max_JK)
+        self.highlight_point_model = HighlightPointModel(self.cmap_model, 0.5)
 
-        draw_sRGB_gamut_JK_slice(self.bezier_ax, 50)
+        self.bezier_builder = BezierBuilder(self.bezier_ax, self.bezier_model)
+        self.bezier_gamut_viewer = GamutViewer2D(self.bezier_ax,
+                                                 self.highlight_point_model)
+        tmp = HighlightPoint2DView(self.bezier_ax,
+                                   self.highlight_point_model)
+        self.bezier_highlight_point_view = tmp
+
+        draw_pure_hue_angles(self.bezier_ax)
         self.bezier_ax.set_xlim(-100, 100)
         self.bezier_ax.set_ylim(-100, 100)
 
-        self.bezier_builder = BezierBuilder(self.bezier_ax, self.bezier_model)
-
-        self.cmap_model = BezierCMapModel(self.bezier_model, min_JK, max_JK)
-
-        self.cmap_view = BezierCMapView(self.cm_ax, self.cmap_model)
+        self.cmap_view = CMapView(self.cm_ax, self.cmap_model)
+        self.cmap_highlighter = HighlightPointBuilder(self.cm_ax,
+                                                      self.highlight_point_model)
 
 from .minimvc import Trigger
 
@@ -335,23 +345,29 @@ class BezierCMapModel(object):
         self.max_JK = max_JK
         self.trigger = Trigger()
 
-        self.bezier_model.trigger.add_callback(self._refresh)
+        self.bezier_model.trigger.add_callback(self.trigger.fire)
 
-    def _refresh(self):
-        self.trigger.fire()
+    def get_JKapbp_at(self, at):
+        ap, bp = self.bezier_model.get_bezier_points_at(at)
+        JK = (self.max_JK - self.min_JK) * at + self.min_JK
+        return JK, ap, bp
+
+    def get_JKapbp(self, num=200):
+        # ap, bp = self.bezier_model.get_bezier_points(num)
+        # assert ap.ndim == bp.ndim == 1
+        # JK = np.linspace(self.min_JK, self.max_JK, num=ap.shape[0])
+        # return JK, ap, bp
+        return self.get_JKapbp_at(np.linspace(0, 1, num))
 
     def get_sRGB(self, num=200):
-        ap, bp = self.bezier_model.get_bezier_points(num)
-        assert ap.ndim == bp.ndim == 1
-        JK = np.linspace(self.min_JK, self.max_JK, num=ap.shape[0])
-
+        JK, ap, bp = self.get_JKapbp()
         JMh = _JKapbp_to_JMh(np.column_stack((JK, ap, bp)))
         sRGB = _JMh_to_sRGB(JMh)
         oog = np.any((sRGB > 1) | (sRGB < 0), axis=-1)
         sRGB[oog, :] = np.nan
         return sRGB, oog
 
-class BezierCMapView(object):
+class CMapView(object):
     def __init__(self, ax, cmap_model):
         self.ax = ax
         self.cmap_model = cmap_model
@@ -377,3 +393,93 @@ class BezierCMapView(object):
         rgb_display, oog_display = self._drawable_arrays()
         self.image.set_data(rgb_display)
         self.gamut_alert_image.set_data(oog_display)
+
+class HighlightPointModel(object):
+    def __init__(self, cmap_model, point):
+        self._cmap_model = cmap_model
+        self._point = point
+        self.trigger = Trigger()
+
+        self._cmap_model.trigger.add_callback(self.trigger.fire)
+
+    def get_point(self):
+        return self._point
+
+    def set_point(self, point):
+        self._point = point
+        self.trigger.fire()
+
+    def get_JKapbp(self):
+        return self._cmap_model.get_JKapbp_at(self._point)
+
+class HighlightPointBuilder(object):
+    def __init__(self, ax, highlight_point_model):
+        self.ax = ax
+        self.highlight_point_model = highlight_point_model
+
+        self.canvas = self.ax.figure.canvas
+        self._in_drag = False
+        self.canvas.mpl_connect("button_press_event", self._on_button_press)
+        self.canvas.mpl_connect("motion_notify_event", self._on_motion)
+        self.canvas.mpl_connect("button_release_event", self._on_button_release)
+
+        self.marker_line = self.ax.axvline(highlight_point_model.get_point(),
+                                           linewidth=3, color="r")
+
+        self.highlight_point_model.trigger.add_callback(self._refresh)
+
+    def _on_button_press(self, event):
+        if event.inaxes != self.ax:
+            return
+        if event.button != 1:
+            return
+        self._in_drag = True
+        self.highlight_point_model.set_point(event.xdata)
+
+    def _on_motion(self, event):
+        if self._in_drag and event.xdata is not None:
+            self.highlight_point_model.set_point(event.xdata)
+
+    def _on_button_release(self, event):
+        if event.button != 1:
+            return
+        self._in_drag = False
+
+    def _refresh(self):
+        point = self.highlight_point_model.get_point()
+        self.marker_line.set_data([point, point], [0, 1])
+        self.canvas.draw()
+
+class GamutViewer2D(object):
+    def __init__(self, ax, highlight_point_model,
+                 ap_lim=(-50, 50), bp_lim=(-50, 50)):
+        self.ax = ax
+        self.highlight_point_model = highlight_point_model
+        self.ap_lim = ap_lim
+        self.bp_lim = bp_lim
+
+        self.image = self.ax.imshow([[[0, 0, 0]]], aspect="equal",
+                                    extent=ap_lim + bp_lim,
+                                    origin="lower")
+
+        self.highlight_point_model.trigger.add_callback(self._refresh)
+
+    def _refresh(self):
+        JK, _, _ = self.highlight_point_model.get_JKapbp()
+        sRGB = sRGB_gamut_JK_slice(JK, self.ap_lim, self.bp_lim)
+        self.image.set_data(sRGB)
+
+class HighlightPoint2DView(object):
+    def __init__(self, ax, highlight_point_model):
+        self.ax = ax
+        self.highlight_point_model = highlight_point_model
+
+        _, ap, bp = self.highlight_point_model.get_JKapbp()
+        self.marker = self.ax.plot([ap], [bp], "y.", mew=3)[0]
+
+        self.highlight_point_model.trigger.add_callback(self._refresh)
+
+    def _refresh(self):
+        _, ap, bp = self.highlight_point_model.get_JKapbp()
+        self.marker.set_data([ap], [bp])
+        self.ax.figure.canvas.draw()

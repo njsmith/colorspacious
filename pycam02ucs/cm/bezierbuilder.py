@@ -57,8 +57,11 @@ class BezierModel(object):
             return list(self._xp), list(self._yp)
 
     def get_bezier_points(self, num=200):
+        return self.get_bezier_points_at(np.linspace(0, 1, num))
+
+    def get_bezier_points_at(self, at):
         with self.lock:
-            x, y = Bezier(list(zip(self._xp, self._yp))).T
+            x, y = Bezier(list(zip(self._xp, self._yp)), at).T
             return x, y
 
     def add_point(self, i, new_x, new_y):
@@ -166,13 +169,14 @@ def Bernstein(n, k):
     return _bpoly
 
 
-def Bezier(points, num=200):
+def Bezier(points, at):
     """Build Bézier curve from points.
 
     """
+    at = np.asarray(at)
+    at_flat = at.ravel()
     N = len(points)
-    t = np.linspace(0, 1, num=num)
-    curve = np.zeros((num, 2))
+    curve = np.zeros((at_flat.shape[0], 2))
     for ii in range(N):
-        curve += np.outer(Bernstein(N - 1, ii)(t), points[ii])
-    return curve
+        curve += np.outer(Bernstein(N - 1, ii)(at_flat), points[ii])
+    return curve.reshape(at.shape + (2,))

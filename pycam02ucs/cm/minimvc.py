@@ -24,6 +24,11 @@ class Trigger(object):
 
     def add_callback(self, f):
         self._callbacks.add(f)
+        # Always call it immediately -- this is always legal (b/c as soon as
+        # you call add_callback you have to be prepared for changes to
+        # happen), saves having to explicitly call refresh methods in every
+        # __init__, and flushes out bugs.
+        f()
 
     def remove_callback(self, f):
         self._callbacks.remove(f)

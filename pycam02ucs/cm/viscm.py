@@ -310,7 +310,8 @@ class viscm_editor(object):
         self.min_JK = min_JK
         self.max_JK = max_JK
 
-        self.fig, (self.bezier_ax, self.cm_ax) = plt.subplots(2, 1)
+        (self.fig,
+         (self.bezier_ax, self.cm_ax, self.wireframe_ax)) = plt.subplots(3, 1)
 
 
         from .bezierbuilder import BezierModel, BezierBuilder
@@ -335,6 +336,10 @@ class viscm_editor(object):
         self.cmap_view = CMapView(self.cm_ax, self.cmap_model)
         self.cmap_highlighter = HighlightPointBuilder(self.cm_ax,
                                                       self.highlight_point_model)
+
+        # self.wireframe_view = WireframeView(self.wireframe_ax,
+        #                                     self.cmap_model,
+        #                                     self.highlight_point_model)
 
 from .minimvc import Trigger
 
@@ -482,4 +487,39 @@ class HighlightPoint2DView(object):
     def _refresh(self):
         _, ap, bp = self.highlight_point_model.get_JKapbp()
         self.marker.set_data([ap], [bp])
+        self.ax.figure.canvas.draw()
+
+class WireframeView(object):
+    def __init__(self, ax, cmap_model, highlight_point_model):
+        self.ax = ax
+        self.cmap_model = cmap_model
+        self.highlight_point_model = highlight_point_model
+
+        JK, ap, bp = self.cmap_model.get_JKapbp()
+        self.line = self.ax.plot(JK, ap, bp)[0]
+
+        JK, ap, bp = self.highlight_point_model.get_JKapbp()
+        self.marker = self.ax.plot([JK], [ap], [bp], "y.", mew=3)[0]
+
+        gamut_patch = sRGB_gamut_patch()
+        # That function returns a patch where each face is colored to match
+        # the represented colors. For present purposes we want something
+        # less... colorful.
+        gamut_patch.set_facecolor([0.5, 0.5, 0.5, 0.1])
+        gamut_patch.set_edgecolor([0.2, 0.2, 0.2, 0.1])
+        self.ax.add_collection3d(gamut_patch)
+
+        _setup_JKapbp_axis(self.ax)
+
+        self.cmap_model.trigger.add_callback(self._refresh_line)
+        self.highlight_point_model.trigger.add_callback(self._refresh_point)
+
+    def _refresh_line(self):
+        JK, ap, bp = self.cmap_model.get_JKapbp()
+        self.line.set_data(JK, ap, bp)
+        self.ax.figure.canvas.draw()
+
+    def _refresh_point(self):
+        JK, ap, bp = self.highlight_point_model.get_JKapbp()
+        self.marker.set_data([JK], [ap], [bp])
         self.ax.figure.canvas.draw()

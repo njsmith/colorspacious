@@ -82,6 +82,12 @@ class BezierModel(object):
             self._yp[i] = new_y
         self.trigger.fire()
 
+    def set_control_points(self, xp, yp):
+        with self.lock:
+            self._xp = list(xp)
+            self._yp = list(yp)
+        self.trigger.fire()
+
 class BezierBuilder(object):
     """Bézier curve interactive builder.
 

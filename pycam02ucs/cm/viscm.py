@@ -316,6 +316,16 @@ class viscm_editor(object):
 
         from .bezierbuilder import BezierModel, BezierBuilder
 
+        # This is my favorite set of control points so far (just from playing
+        # around with things):
+        #   min_JK = 15
+        #   max_JK = 95
+        #   xp =
+        #     [-4, 27.041103603603631, 84.311067635550557, 12.567076579094476, -9.6]
+        #   yp =
+        #     [-34, -41.447876447876524, 36.28563443264386, 25.357741755170423, 41]
+        # -- njs, 2015-04-05
+
         xp = [-4, 40, -9.6]
         yp = [-34, 4.6, 41]
         self.bezier_model = BezierModel(xp, yp)

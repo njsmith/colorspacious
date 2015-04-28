@@ -15,6 +15,7 @@ try:
     import mpl_toolkits.mplot3d
     from matplotlib.gridspec import GridSpec
 except ImportError:
+    print("\nWarning! could not import matplotlib\n")
     pass
 
 from pycam02ucs import ViewingConditions
@@ -351,7 +352,7 @@ class viscm_editor(object):
         #                                     self.cmap_model,
         #                                     self.highlight_point_model)
 
-from .minimvc import Trigger
+from pycam02ucs.cm.minimvc import Trigger
 
 class BezierCMapModel(object):
     def __init__(self, bezier_model, min_JK, max_JK):
@@ -533,3 +534,11 @@ class WireframeView(object):
         JK, ap, bp = self.highlight_point_model.get_JKapbp()
         self.marker.set_data([JK], [ap], [bp])
         self.ax.figure.canvas.draw()
+
+
+if __name__ == "__main__":
+    from pycam02ucs.cm import viscm
+    viscm.viscm_editor()
+
+    import matplotlib.pyplot as plt
+    plt.show()

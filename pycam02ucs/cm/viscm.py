@@ -21,23 +21,29 @@ except ImportError:
 from pycam02ucs import ViewingConditions
 from pycam02ucs.cam02ucs import deltaEp_sRGB, UCS_space
 from pycam02ucs.srgb import sRGB_to_XYZ, XYZ_to_sRGB
+from pycam02ucs.cm.minimvc import Trigger
+
 
 def _sRGB_to_CIECAM02(RGB):
     XYZ = sRGB_to_XYZ(RGB)
     return ViewingConditions.sRGB.XYZ_to_CIECAM02(XYZ)
 
+
 def _CIECAM02_to_JKapbp(ciecam02):
     JMh = np.column_stack((ciecam02.J, ciecam02.M, ciecam02.h))
     return UCS_space.JMh_to_JKapbp(JMh)
 
+
 def _JKapbp_to_JMh(JKapbp):
     return UCS_space.JKapbp_to_JMh(JKapbp)
+
 
 def _JMh_to_sRGB(JMh):
     XYZ = ViewingConditions.sRGB.CIECAM02_to_XYZ(J=JMh[..., 0],
                                                  M=JMh[..., 1],
                                                  h=JMh[..., 2])
     return XYZ_to_sRGB(XYZ)
+
 
 def _show_cmap(ax, rgb):
     ax.imshow(rgb[np.newaxis, ...],
@@ -88,6 +94,7 @@ TRITANOMALY_10 = [[1.255528, -0.076749, -0.178779],
                   [-0.078411, 0.930809, 0.147602],
                   [0.004733, 0.691367, 0.303900]]
 
+
 def _apply_rgb_mat(mat, rgb):
     return np.clip(np.dot(mat, rgb.T).T, 0, 1)
 
@@ -98,6 +105,7 @@ BP_LIM = (-47, 43)
 # J'/K goes from 0 to 100
 JK_LIM = (-1, 101)
 
+
 def _setup_JKapbp_axis(ax):
     ax.set_xlabel("a' (green -> red)")
     ax.set_ylabel("b' (blue -> yellow)")
@@ -107,7 +115,7 @@ def _setup_JKapbp_axis(ax):
     ax.set_zlim(*JK_LIM)
 
 
-def _vis_axes(editor=False):
+def _vis_axes():
     grid = GridSpec(5, 7,
                     width_ratios=[1, 1, 1, 1, 1, 1, 6],
                     height_ratios=[1, 1, 1, 1, 2])
@@ -126,6 +134,7 @@ def _vis_axes(editor=False):
 
     return axes
 
+
 # N=256 matches the default quantization for LinearSegmentedColormap, which
 # reduces quantization/aliasing artifacts (esp. in the perceptual deltas
 # plot).
@@ -138,7 +147,7 @@ def viscm(cm, name=None, N=256, N_dots=50, show_gamut=False, axes=None):
     if axes is None:
         fig = plt.figure()
         fig.suptitle("Colormap evaluation: %s" % (name,), fontsize=24)
-        axes = _vis_axes(editor=editor)
+        axes = _vis_axes()
 
     x = np.linspace(0, 1, N)
     x_dots = np.linspace(0, 1, N_dots)
@@ -198,8 +207,7 @@ def viscm(cm, name=None, N=256, N_dots=50, show_gamut=False, axes=None):
                JKapbp_dots[:, 2],
                JKapbp_dots[:, 0],
                c=RGB_dots[:, :],
-               s=80,
-           )
+               s=80)
 
     # Draw a wireframe indicating the sRGB gamut
     if show_gamut:
@@ -213,6 +221,7 @@ def viscm(cm, name=None, N=256, N_dots=50, show_gamut=False, axes=None):
 
     _setup_JKapbp_axis(ax)
 
+
 def sRGB_gamut_patch(resolution=20):
     step = 1.0 / resolution
     sRGB_quads = []
@@ -225,25 +234,22 @@ def sRGB_gamut_patch(resolution=20):
                 # R quad
                 sRGB_quads.append([[fixed, i * step, j * step],
                                    [fixed, (i+1) * step, j * step],
-                                   [fixed, (i+1) *step, (j+1) * step],
-                                   [fixed, i * step, (j+1) * step],
-                               ])
+                                   [fixed, (i+1) * step, (j+1) * step],
+                                   [fixed, i * step, (j+1) * step]])
                 sRGB_values.append((fixed, (i + 0.5) * step, (j + 0.5) * step,
                                     1))
                 # G quad
                 sRGB_quads.append([[i * step, fixed, j * step],
                                    [(i+1) * step, fixed, j * step],
-                                   [(i+1) *step, fixed, (j+1) * step],
-                                   [i * step, fixed, (j+1) * step],
-                               ])
+                                   [(i+1) * step, fixed, (j+1) * step],
+                                   [i * step, fixed, (j+1) * step]])
                 sRGB_values.append(((i + 0.5) * step, fixed, (j + 0.5) * step,
                                     1))
                 # B quad
                 sRGB_quads.append([[i * step, j * step, fixed],
                                    [(i+1) * step, j * step, fixed],
-                                   [(i+1) *step, (j+1) * step, fixed],
-                                   [i * step, (j+1) * step, fixed],
-                               ])
+                                   [(i+1) * step, (j+1) * step, fixed],
+                                   [i * step, (j+1) * step, fixed]])
                 sRGB_values.append(((i + 0.5) * step, (j + 0.5) * step, fixed,
                                     1))
     sRGB_quads = np.asarray(sRGB_quads)
@@ -259,6 +265,7 @@ def sRGB_gamut_patch(resolution=20):
     gamut_patch.set_edgecolor(sRGB_values)
     return gamut_patch
 
+
 def sRGB_gamut_JK_slice(JK,
                         ap_lim=(-50, 50), bp_lim=(-50, 50), resolution=200):
     ap_grid, bp_grid = np.mgrid[ap_lim[0] : ap_lim[1] : resolution * 1j,
@@ -273,16 +280,17 @@ def sRGB_gamut_JK_slice(JK,
     sRGB[np.any((sRGB < 0) | (sRGB > 1), axis=-1)] = np.nan
     return sRGB
 
+
 def draw_pure_hue_angles(ax):
     # Pure hue angles from CIECAM-02
     for color, angle in [("r", 20.14),
                          ("y", 90.00),
                          ("g", 164.25),
-                         ("b", 237.53),
-                     ]:
+                         ("b", 237.53)]:
         x = np.cos(np.deg2rad(angle))
         y = np.sin(np.deg2rad(angle))
         ax.plot([0, x * 1000], [0, y * 1000], color + "--")
+
 
 def draw_sRGB_gamut_JK_slice(ax, JK, ap_lim=(-50, 50), bp_lim=(-50, 50),
                              **kwargs):
@@ -306,6 +314,7 @@ def draw_sRGB_gamut_JK_slice(ax, JK, ap_lim=(-50, 50), bp_lim=(-50, 50),
 #     sRGB[np.any((sRGB < 0) | (sRGB > 1), axis=-1)] = np.nan
 #     return sRGB
 
+
 class viscm_editor(object):
     def __init__(self, min_JK=15, max_JK=95):
         self.min_JK = min_JK
@@ -314,8 +323,7 @@ class viscm_editor(object):
         (self.fig,
          (self.bezier_ax, self.cm_ax, self.wireframe_ax)) = plt.subplots(3, 1)
 
-
-        from .bezierbuilder import BezierModel, BezierBuilder
+        from pycam02ucs.cm.bezierbuilder import BezierModel, BezierBuilder
 
         # This is my favorite set of control points so far (just from playing
         # around with things):
@@ -345,14 +353,14 @@ class viscm_editor(object):
         self.bezier_ax.set_ylim(-100, 100)
 
         self.cmap_view = CMapView(self.cm_ax, self.cmap_model)
-        self.cmap_highlighter = HighlightPointBuilder(self.cm_ax,
-                                                      self.highlight_point_model)
+        self.cmap_highlighter = HighlightPointBuilder(
+            self.cm_ax,
+            self.highlight_point_model)
 
         # self.wireframe_view = WireframeView(self.wireframe_ax,
         #                                     self.cmap_model,
         #                                     self.highlight_point_model)
 
-from pycam02ucs.cm.minimvc import Trigger
 
 class BezierCMapModel(object):
     def __init__(self, bezier_model, min_JK, max_JK):
@@ -383,6 +391,7 @@ class BezierCMapModel(object):
         sRGB[oog, :] = np.nan
         return sRGB, oog
 
+
 class CMapView(object):
     def __init__(self, ax, cmap_model):
         self.ax = ax
@@ -410,6 +419,7 @@ class CMapView(object):
         self.image.set_data(rgb_display)
         self.gamut_alert_image.set_data(oog_display)
 
+
 class HighlightPointModel(object):
     def __init__(self, cmap_model, point):
         self._cmap_model = cmap_model
@@ -428,6 +438,7 @@ class HighlightPointModel(object):
     def get_JKapbp(self):
         return self._cmap_model.get_JKapbp_at(self._point)
 
+
 class HighlightPointBuilder(object):
     def __init__(self, ax, highlight_point_model):
         self.ax = ax
@@ -437,7 +448,8 @@ class HighlightPointBuilder(object):
         self._in_drag = False
         self.canvas.mpl_connect("button_press_event", self._on_button_press)
         self.canvas.mpl_connect("motion_notify_event", self._on_motion)
-        self.canvas.mpl_connect("button_release_event", self._on_button_release)
+        self.canvas.mpl_connect("button_release_event",
+                                self._on_button_release)
 
         self.marker_line = self.ax.axvline(highlight_point_model.get_point(),
                                            linewidth=3, color="r")
@@ -466,6 +478,7 @@ class HighlightPointBuilder(object):
         self.marker_line.set_data([point, point], [0, 1])
         self.canvas.draw()
 
+
 class GamutViewer2D(object):
     def __init__(self, ax, highlight_point_model,
                  ap_lim=(-50, 50), bp_lim=(-50, 50)):
@@ -485,6 +498,7 @@ class GamutViewer2D(object):
         sRGB = sRGB_gamut_JK_slice(JK, self.ap_lim, self.bp_lim)
         self.image.set_data(sRGB)
 
+
 class HighlightPoint2DView(object):
     def __init__(self, ax, highlight_point_model):
         self.ax = ax
@@ -499,6 +513,7 @@ class HighlightPoint2DView(object):
         _, ap, bp = self.highlight_point_model.get_JKapbp()
         self.marker.set_data([ap], [bp])
         self.ax.figure.canvas.draw()
+
 
 class WireframeView(object):
     def __init__(self, ax, cmap_model, highlight_point_model):
@@ -537,8 +552,5 @@ class WireframeView(object):
 
 
 if __name__ == "__main__":
-    from pycam02ucs.cm import viscm
-    viscm.viscm_editor()
-
-    import matplotlib.pyplot as plt
+    viscm_editor()
     plt.show()

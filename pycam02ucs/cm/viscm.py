@@ -315,15 +315,26 @@ def draw_sRGB_gamut_JK_slice(ax, JK, ap_lim=(-50, 50), bp_lim=(-50, 50),
 #     return sRGB
 
 
+def _viscm_editor_axes():
+    grid = GridSpec(3, 1,
+                    height_ratios=[1, 1, 1])
+    axes = {'bezier': grid[0, 0],
+            'cm': grid[1, 0]}
+
+    axes = {key: plt.subplot(value) for (key, value) in axes.items()}
+    axes['wireframe'] = plt.subplot(grid[2, 0], projection='3d')
+
+    return axes
+
+
 class viscm_editor(object):
     def __init__(self, min_JK=15, max_JK=95):
         self.min_JK = min_JK
         self.max_JK = max_JK
 
-        (self.fig,
-         (self.bezier_ax, self.cm_ax, self.wireframe_ax)) = plt.subplots(3, 1)
-
         from pycam02ucs.cm.bezierbuilder import BezierModel, BezierBuilder
+
+        axes = _viscm_editor_axes()
 
         # This is my favorite set of control points so far (just from playing
         # around with things):
@@ -341,25 +352,25 @@ class viscm_editor(object):
         self.cmap_model = BezierCMapModel(self.bezier_model, min_JK, max_JK)
         self.highlight_point_model = HighlightPointModel(self.cmap_model, 0.5)
 
-        self.bezier_builder = BezierBuilder(self.bezier_ax, self.bezier_model)
-        self.bezier_gamut_viewer = GamutViewer2D(self.bezier_ax,
+        self.bezier_builder = BezierBuilder(axes['bezier'], self.bezier_model)
+        self.bezier_gamut_viewer = GamutViewer2D(axes['bezier'],
                                                  self.highlight_point_model)
-        tmp = HighlightPoint2DView(self.bezier_ax,
+        tmp = HighlightPoint2DView(axes['bezier'],
                                    self.highlight_point_model)
         self.bezier_highlight_point_view = tmp
 
-        draw_pure_hue_angles(self.bezier_ax)
-        self.bezier_ax.set_xlim(-100, 100)
-        self.bezier_ax.set_ylim(-100, 100)
+        draw_pure_hue_angles(axes['bezier'])
+        axes['bezier'].set_xlim(-100, 100)
+        axes['bezier'].set_ylim(-100, 100)
 
-        self.cmap_view = CMapView(self.cm_ax, self.cmap_model)
+        self.cmap_view = CMapView(axes['cm'], self.cmap_model)
         self.cmap_highlighter = HighlightPointBuilder(
-            self.cm_ax,
+            axes['cm'],
             self.highlight_point_model)
 
-        # self.wireframe_view = WireframeView(self.wireframe_ax,
-        #                                     self.cmap_model,
-        #                                     self.highlight_point_model)
+        self.wireframe_view = WireframeView(axes['wireframe'],
+                                            self.cmap_model,
+                                            self.highlight_point_model)
 
 
 class BezierCMapModel(object):
@@ -522,7 +533,8 @@ class WireframeView(object):
         self.highlight_point_model = highlight_point_model
 
         JK, ap, bp = self.cmap_model.get_JKapbp()
-        self.line = self.ax.plot(JK, ap, bp)[0]
+        self.line = self.ax.plot([0, 10], [0, 10])[0]
+        #self.line = self.ax.plot(JK, ap, bp)[0]
 
         JK, ap, bp = self.highlight_point_model.get_JKapbp()
         self.marker = self.ax.plot([JK], [ap], [bp], "y.", mew=3)[0]
@@ -542,12 +554,14 @@ class WireframeView(object):
 
     def _refresh_line(self):
         JK, ap, bp = self.cmap_model.get_JKapbp()
-        self.line.set_data(JK, ap, bp)
+        self.line.set_data(ap, bp)
+        self.line.set_3d_properties(zs=JK)
         self.ax.figure.canvas.draw()
 
     def _refresh_point(self):
         JK, ap, bp = self.highlight_point_model.get_JKapbp()
-        self.marker.set_data([JK], [ap], [bp])
+        self.marker.set_data([ap], [bp])
+        self.marker.set_3d_properties(zs=[JK])
         self.ax.figure.canvas.draw()
 
 

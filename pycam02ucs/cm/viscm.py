@@ -14,6 +14,7 @@ try:
     import matplotlib.pyplot as plt
     import mpl_toolkits.mplot3d
     from matplotlib.gridspec import GridSpec
+    from matplotlib.widgets import Button, Slider
 except ImportError:
     print("\nWarning! could not import matplotlib\n")
     pass
@@ -317,24 +318,33 @@ def draw_sRGB_gamut_JK_slice(ax, JK, ap_lim=(-50, 50), bp_lim=(-50, 50),
 
 def _viscm_editor_axes():
     grid = GridSpec(3, 1,
-                    height_ratios=[1, 1, 1])
+                    width_ratios=[1],
+                    height_ratios=[3, 3, 0.1])
     axes = {'bezier': grid[0, 0],
             'cm': grid[1, 0]}
 
     axes = {key: plt.subplot(value) for (key, value) in axes.items()}
-    axes['wireframe'] = plt.subplot(grid[2, 0], projection='3d')
-
     return axes
 
 
 class viscm_editor(object):
     def __init__(self, min_JK=15, max_JK=95):
-        self.min_JK = min_JK
-        self.max_JK = max_JK
-
         from pycam02ucs.cm.bezierbuilder import BezierModel, BezierBuilder
 
         axes = _viscm_editor_axes()
+
+        ax_btn_wireframe = plt.axes([0.7, 0.05, 0.1, 0.075])
+        btn_wireframe = Button(ax_btn_wireframe, 'Show 3D gamut')
+        btn_wireframe.on_clicked(self.plot_3d_gamut)
+
+        axcolor = 'lightgoldenrodyellow'
+        ax_jk_min = plt.axes([0.25, 0.1, 0.65, 0.03], axisbg=axcolor)
+        ax_jk_max = plt.axes([0.25, 0.15, 0.65, 0.03], axisbg=axcolor)
+        self.jk_min_slider = Slider(ax_jk_min, '$JK_{min}$', 0, 100, valinit=min_JK)
+        self.jk_max_slider = Slider(ax_jk_max, '$JK_{max}$', 0, 100, valinit=max_JK)
+
+        self.jk_min_slider.on_changed(self._jk_update)
+        self.jk_max_slider.on_changed(self._jk_update)
 
         # This is my favorite set of control points so far (just from playing
         # around with things):
@@ -349,7 +359,9 @@ class viscm_editor(object):
         xp = [-4, 40, -9.6]
         yp = [-34, 4.6, 41]
         self.bezier_model = BezierModel(xp, yp)
-        self.cmap_model = BezierCMapModel(self.bezier_model, min_JK, max_JK)
+        self.cmap_model = BezierCMapModel(self.bezier_model,
+                                          self.jk_min_slider.val,
+                                          self.jk_max_slider.val)
         self.highlight_point_model = HighlightPointModel(self.cmap_model, 0.5)
 
         self.bezier_builder = BezierBuilder(axes['bezier'], self.bezier_model)
@@ -368,9 +380,23 @@ class viscm_editor(object):
             axes['cm'],
             self.highlight_point_model)
 
-        self.wireframe_view = WireframeView(axes['wireframe'],
+    def plot_3d_gamut(self, event):
+        fig, ax = plt.subplots(subplot_kw=dict(projection='3d'))
+        self.wireframe_view = WireframeView(ax,
                                             self.cmap_model,
                                             self.highlight_point_model)
+        plt.show()
+
+    def _jk_update(self, val):
+        jk_min = self.jk_min_slider.val
+        jk_max = self.jk_max_slider.val
+
+        smallest, largest = min(jk_min, jk_max), max(jk_min, jk_max)
+        if (jk_min > smallest) or (jk_max < largest):
+            self.jk_min_slider.set_val(smallest)
+            self.jk_max_slider.set_val(largest)
+
+        self.cmap_model.set_JK_minmax(smallest, largest)
 
 
 class BezierCMapModel(object):
@@ -381,6 +407,11 @@ class BezierCMapModel(object):
         self.trigger = Trigger()
 
         self.bezier_model.trigger.add_callback(self.trigger.fire)
+
+    def set_JK_minmax(self, min_JK, max_JK):
+        self.min_JK = min_JK
+        self.max_JK = max_JK
+        self.trigger.fire()
 
     def get_JKapbp_at(self, at):
         ap, bp = self.bezier_model.get_bezier_points_at(at)
@@ -549,8 +580,10 @@ class WireframeView(object):
 
         _setup_JKapbp_axis(self.ax)
 
-        self.cmap_model.trigger.add_callback(self._refresh_line)
-        self.highlight_point_model.trigger.add_callback(self._refresh_point)
+        #self.cmap_model.trigger.add_callback(self._refresh_line)
+        #self.highlight_point_model.trigger.add_callback(self._refresh_point)
+        self._refresh_line()
+        self._refresh_point()
 
     def _refresh_line(self):
         JK, ap, bp = self.cmap_model.get_JKapbp()

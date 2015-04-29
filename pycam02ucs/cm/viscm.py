@@ -319,7 +319,7 @@ def draw_sRGB_gamut_JK_slice(ax, JK, ap_lim=(-50, 50), bp_lim=(-50, 50),
 def _viscm_editor_axes():
     grid = GridSpec(3, 1,
                     width_ratios=[1],
-                    height_ratios=[3, 3, 0.1])
+                    height_ratios=[3, 3, 1])
     axes = {'bezier': grid[0, 0],
             'cm': grid[1, 0]}
 
@@ -333,15 +333,20 @@ class viscm_editor(object):
 
         axes = _viscm_editor_axes()
 
-        ax_btn_wireframe = plt.axes([0.7, 0.05, 0.1, 0.075])
+        ax_btn_wireframe = plt.axes([0.7, 0.1, 0.1, 0.075])
         btn_wireframe = Button(ax_btn_wireframe, 'Show 3D gamut')
         btn_wireframe.on_clicked(self.plot_3d_gamut)
 
-        axcolor = 'lightgoldenrodyellow'
-        ax_jk_min = plt.axes([0.25, 0.1, 0.65, 0.03], axisbg=axcolor)
-        ax_jk_max = plt.axes([0.25, 0.15, 0.65, 0.03], axisbg=axcolor)
-        self.jk_min_slider = Slider(ax_jk_min, '$JK_{min}$', 0, 100, valinit=min_JK)
-        self.jk_max_slider = Slider(ax_jk_max, '$JK_{max}$', 0, 100, valinit=max_JK)
+        axcolor = 'None'
+        ax_jk_min = plt.axes([0.1, 0.1, 0.5, 0.03], axisbg=axcolor)
+        ax_jk_min.imshow(np.linspace(0, 100, 101).reshape(1, -1), cmap='gray')
+        ax_jk_min.set_xlim(0, 100)
+
+        ax_jk_max = plt.axes([0.1, 0.15, 0.5, 0.03], axisbg=axcolor)
+        ax_jk_max.imshow(np.linspace(0, 100, 101).reshape(1, -1), cmap='gray')
+
+        self.jk_min_slider = Slider(ax_jk_min, r"$J/K_\mathrm{min}$", 0, 100, valinit=min_JK)
+        self.jk_max_slider = Slider(ax_jk_max, r"$J/K_\mathrm{max}$", 0, 100, valinit=max_JK)
 
         self.jk_min_slider.on_changed(self._jk_update)
         self.jk_max_slider.on_changed(self._jk_update)

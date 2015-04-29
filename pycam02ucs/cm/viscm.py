@@ -333,9 +333,13 @@ class viscm_editor(object):
 
         axes = _viscm_editor_axes()
 
-        ax_btn_wireframe = plt.axes([0.7, 0.1, 0.1, 0.075])
+        ax_btn_wireframe = plt.axes([0.7, 0.1, 0.1, 0.055])
         btn_wireframe = Button(ax_btn_wireframe, 'Show 3D gamut')
         btn_wireframe.on_clicked(self.plot_3d_gamut)
+
+        ax_btn_wireframe = plt.axes([0.81, 0.1, 0.1, 0.055])
+        btn_save = Button(ax_btn_wireframe, 'Save colormap')
+        btn_save.on_clicked(self.save_colormap)
 
         axcolor = 'None'
         ax_jk_min = plt.axes([0.1, 0.1, 0.5, 0.03], axisbg=axcolor)
@@ -392,6 +396,51 @@ class viscm_editor(object):
                                             self.highlight_point_model)
         plt.show()
 
+    def save_colormap(self, event):
+        import textwrap
+
+        template = textwrap.dedent('''
+        from matplotlib.colors import LinearSegmentedColormap
+
+        # Used to reconstruct the colormap in pycam02ucs.cm.viscm
+        parameters = {{'xp': {xp},
+                      'yp': {yp},
+                      'min_JK': {min_JK},
+                      'max_JK': {max_JK}}}
+
+        cm_data = {array_list}
+
+        test_cm = LinearSegmentedColormap.from_list('test_cm', cm_data)
+
+
+        if __name__ == "__main__":
+            import matplotlib.pyplot as plt
+            import numpy as np
+
+            plt.imshow(np.linspace(0, 100, 256)[None, :], aspect='auto',
+                       cmap=test_cm)
+            plt.show()
+        ''')
+
+        rgb, _ = self.cmap_model.get_sRGB(num=256)
+        with open('/tmp/new_cm.py', 'w') as f:
+            array_list = np.array_repr(rgb, max_line_width=78)
+            array_list = array_list.replace('array(', '')[:-1]
+
+            xp, yp = self.cmap_model.bezier_model.get_control_points()
+
+            data = dict(array_list=array_list,
+                        xp=xp,
+                        yp=yp,
+                        min_JK=self.cmap_model.min_JK,
+                        max_JK=self.cmap_model.max_JK)
+
+            f.write(template.format(**data))
+
+            print("*" * 50)
+            print("Saved colormap to /tmp/new_cm.py")
+            print("*" * 50)
+
     def _jk_update(self, val):
         jk_min = self.jk_min_slider.val
         jk_max = self.jk_max_slider.val
@@ -432,6 +481,7 @@ class BezierCMapModel(object):
         return self.get_JKapbp_at(np.linspace(0, 1, num))
 
     def get_sRGB(self, num=200):
+        # Return sRGB and out-of-gamut mask
         JK, ap, bp = self.get_JKapbp()
         JMh = _JKapbp_to_JMh(np.column_stack((JK, ap, bp)))
         sRGB = _JMh_to_sRGB(JMh)

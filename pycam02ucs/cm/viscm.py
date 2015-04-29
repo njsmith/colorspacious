@@ -351,6 +351,8 @@ class viscm_editor(object):
         #                                     self.cmap_model,
         #                                     self.highlight_point_model)
 
+        self.fig.tight_layout()
+
 from .minimvc import Trigger
 
 class BezierCMapModel(object):

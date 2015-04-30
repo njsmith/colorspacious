@@ -33,8 +33,6 @@ $ python bezier_builder.py
 
 """
 
-import threading
-
 import numpy as np
 from scipy.special import binom
 
@@ -46,46 +44,39 @@ from .minimvc import Trigger
 
 class BezierModel(object):
     def __init__(self, xp, yp):
-        self.lock = threading.RLock()
         self._xp = list(xp)
         self._yp = list(yp)
 
         self.trigger = Trigger()
 
     def get_control_points(self):
-        with self.lock:
-            return list(self._xp), list(self._yp)
+        return list(self._xp), list(self._yp)
 
     def get_bezier_points(self, num=200):
         return self.get_bezier_points_at(np.linspace(0, 1, num))
 
     def get_bezier_points_at(self, at):
-        with self.lock:
-            x, y = Bezier(list(zip(self._xp, self._yp)), at).T
-            return x, y
+        x, y = Bezier(list(zip(self._xp, self._yp)), at).T
+        return x, y
 
     def add_point(self, i, new_x, new_y):
-        with self.lock:
-            self._xp.insert(i, new_x)
-            self._yp.insert(i, new_y)
+        self._xp.insert(i, new_x)
+        self._yp.insert(i, new_y)
         self.trigger.fire()
 
     def remove_point(self, i):
-        with self.lock:
-            del self._xp[i]
-            del self._yp[i]
+        del self._xp[i]
+        del self._yp[i]
         self.trigger.fire()
 
     def move_point(self, i, new_x, new_y):
-        with self.lock:
-            self._xp[i] = new_x
-            self._yp[i] = new_y
+        self._xp[i] = new_x
+        self._yp[i] = new_y
         self.trigger.fire()
 
     def set_control_points(self, xp, yp):
-        with self.lock:
-            self._xp = list(xp)
-            self._yp = list(yp)
+        self._xp = list(xp)
+        self._yp = list(yp)
         self.trigger.fire()
 
 class BezierBuilder(object):
@@ -117,7 +108,7 @@ class BezierBuilder(object):
         self._refresh()
 
     def __del__(self):
-        self.bezier_model.remove_callback(self._refresh)
+        self.bezier_model.trigger.remove_callback(self._refresh)
 
     def on_button_press(self, event):
         # Ignore clicks outside axes
@@ -156,12 +147,11 @@ class BezierBuilder(object):
         self.bezier_model.move_point(self._index, x, y)
 
     def _refresh(self):
-        with self.bezier_model.lock:
-            xp, yp = self.bezier_model.get_control_points()
-            self.control_polygon.set_data(xp, yp)
-            x, y = self.bezier_model.get_bezier_points()
-            self.bezier_curve.set_data(x, y)
-            self.canvas.draw()
+        xp, yp = self.bezier_model.get_control_points()
+        self.control_polygon.set_data(xp, yp)
+        x, y = self.bezier_model.get_bezier_points()
+        self.bezier_curve.set_data(x, y)
+        self.canvas.draw()
 
 def Bernstein(n, k):
     """Bernstein polynomial.

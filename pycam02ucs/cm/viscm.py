@@ -18,6 +18,7 @@ try:
     from matplotlib.gridspec import GridSpec
     from matplotlib.widgets import Button, Slider
     import matplotlib.colors
+    from matplotlib.colors import LinearSegmentedColormap
 except ImportError:
     print("\nWarning! could not import matplotlib\n")
     pass
@@ -393,7 +394,7 @@ def draw_sRGB_gamut_JK_slice(ax, JK, ap_lim=(-50, 50), bp_lim=(-50, 50),
 def _viscm_editor_axes():
     grid = GridSpec(3, 1,
                     width_ratios=[1],
-                    height_ratios=[3, 3, 0.1])
+                    height_ratios=[3, 3, 1])
     axes = {'bezier': grid[0, 0],
             'cm': grid[1, 0]}
 
@@ -402,20 +403,33 @@ def _viscm_editor_axes():
 
 
 class viscm_editor(object):
-    def __init__(self, min_JK=15, max_JK=95):
+    def __init__(self, min_JK=15, max_JK=95, xp=None, yp=None):
         from pycam02ucs.cm.bezierbuilder import BezierModel, BezierBuilder
 
         axes = _viscm_editor_axes()
 
-        ax_btn_wireframe = plt.axes([0.7, 0.05, 0.1, 0.075])
+        ax_btn_wireframe = plt.axes([0.7, 0.15, 0.1, 0.025])
         btn_wireframe = Button(ax_btn_wireframe, 'Show 3D gamut')
         btn_wireframe.on_clicked(self.plot_3d_gamut)
 
-        axcolor = 'lightgoldenrodyellow'
-        ax_jk_min = plt.axes([0.25, 0.1, 0.65, 0.03], axisbg=axcolor)
-        ax_jk_max = plt.axes([0.25, 0.15, 0.65, 0.03], axisbg=axcolor)
-        self.jk_min_slider = Slider(ax_jk_min, '$JK_{min}$', 0, 100, valinit=min_JK)
-        self.jk_max_slider = Slider(ax_jk_max, '$JK_{max}$', 0, 100, valinit=max_JK)
+        ax_btn_wireframe = plt.axes([0.81, 0.15, 0.1, 0.025])
+        btn_save = Button(ax_btn_wireframe, 'Save colormap')
+        btn_save.on_clicked(self.save_colormap)
+
+        ax_btn_props = plt.axes([0.81, 0.1, 0.1, 0.025])
+        btn_save = Button(ax_btn_props, 'Properties')
+        btn_save.on_clicked(self.show_viscm)
+
+        axcolor = 'None'
+        ax_jk_min = plt.axes([0.1, 0.1, 0.5, 0.03], axisbg=axcolor)
+        ax_jk_min.imshow(np.linspace(0, 100, 101).reshape(1, -1), cmap='gray')
+        ax_jk_min.set_xlim(0, 100)
+
+        ax_jk_max = plt.axes([0.1, 0.15, 0.5, 0.03], axisbg=axcolor)
+        ax_jk_max.imshow(np.linspace(0, 100, 101).reshape(1, -1), cmap='gray')
+
+        self.jk_min_slider = Slider(ax_jk_min, r"$J/K_\mathrm{min}$", 0, 100, valinit=min_JK)
+        self.jk_max_slider = Slider(ax_jk_max, r"$J/K_\mathrm{max}$", 0, 100, valinit=max_JK)
 
         self.jk_min_slider.on_changed(self._jk_update)
         self.jk_max_slider.on_changed(self._jk_update)
@@ -430,8 +444,12 @@ class viscm_editor(object):
         #     [-34, -41.447876447876524, 36.28563443264386, 25.357741755170423, 41]
         # -- njs, 2015-04-05
 
-        xp = [-4, 40, -9.6]
-        yp = [-34, 4.6, 41]
+        if xp is None:
+            xp = [-4, 40, -9.6]
+
+        if yp is None:
+            yp = [-34, 4.6, 41]
+
         self.bezier_model = BezierModel(xp, yp)
         self.cmap_model = BezierCMapModel(self.bezier_model,
                                           self.jk_min_slider.val,
@@ -460,6 +478,58 @@ class viscm_editor(object):
                                             self.cmap_model,
                                             self.highlight_point_model)
         plt.show()
+
+    def save_colormap(self, event):
+        import textwrap
+
+        template = textwrap.dedent('''
+        from matplotlib.colors import LinearSegmentedColormap
+        from numpy import nan, inf
+
+        # Used to reconstruct the colormap in pycam02ucs.cm.viscm
+        parameters = {{'xp': {xp},
+                      'yp': {yp},
+                      'min_JK': {min_JK},
+                      'max_JK': {max_JK}}}
+
+        cm_data = {array_list}
+
+        test_cm = LinearSegmentedColormap.from_list('test_cm', cm_data)
+
+
+        if __name__ == "__main__":
+            import matplotlib.pyplot as plt
+            import numpy as np
+
+            plt.imshow(np.linspace(0, 100, 256)[None, :], aspect='auto',
+                       cmap=test_cm)
+            plt.show()
+        ''')
+
+        rgb, _ = self.cmap_model.get_sRGB(num=256)
+        with open('/tmp/new_cm.py', 'w') as f:
+            array_list = np.array_repr(rgb, max_line_width=78)
+            array_list = array_list.replace('array(', '')[:-1]
+
+            xp, yp = self.cmap_model.bezier_model.get_control_points()
+
+            data = dict(array_list=array_list,
+                        xp=xp,
+                        yp=yp,
+                        min_JK=self.cmap_model.min_JK,
+                        max_JK=self.cmap_model.max_JK)
+
+            f.write(template.format(**data))
+
+            print("*" * 50)
+            print("Saved colormap to /tmp/new_cm.py")
+            print("*" * 50)
+
+    def show_viscm(self, event):
+        cm = LinearSegmentedColormap.from_list(
+            'test_cm',
+            self.cmap_model.get_sRGB(num=64)[0])
+        viscm(cm, name='test_cm', show_gamut=False, axes=None)
 
     def _jk_update(self, val):
         jk_min = self.jk_min_slider.val
@@ -501,7 +571,8 @@ class BezierCMapModel(object):
         return self.get_JKapbp_at(np.linspace(0, 1, num))
 
     def get_sRGB(self, num=200):
-        JK, ap, bp = self.get_JKapbp()
+        # Return sRGB and out-of-gamut mask
+        JK, ap, bp = self.get_JKapbp(num=num)
         JMh = _JKapbp_to_JMh(np.column_stack((JK, ap, bp)))
         sRGB = _JMh_to_sRGB(JMh)
         oog = np.any((sRGB > 1) | (sRGB < 0), axis=-1)
@@ -674,5 +745,18 @@ class WireframeView(object):
 
 
 if __name__ == "__main__":
-    viscm_editor()
+    import sys
+    import os
+
+    ns = {'__name__': ''}
+
+    if len(sys.argv) > 1:
+        cmap_params = sys.argv[1]
+        if os.path.isfile(cmap_params):
+            with open(cmap_params) as f:
+                code = compile(f.read(), cmap_params, 'exec')
+                exec(code, globals(), ns)
+
+    params = ns.get('parameters', {})
+    viscm_editor(**params)
     plt.show()

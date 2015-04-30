@@ -15,6 +15,7 @@ try:
     import mpl_toolkits.mplot3d
     from matplotlib.gridspec import GridSpec
     from matplotlib.widgets import Button, Slider
+    from matplotlib.colors import LinearSegmentedColormap
 except ImportError:
     print("\nWarning! could not import matplotlib\n")
     pass
@@ -333,13 +334,17 @@ class viscm_editor(object):
 
         axes = _viscm_editor_axes()
 
-        ax_btn_wireframe = plt.axes([0.7, 0.1, 0.1, 0.055])
+        ax_btn_wireframe = plt.axes([0.7, 0.15, 0.1, 0.025])
         btn_wireframe = Button(ax_btn_wireframe, 'Show 3D gamut')
         btn_wireframe.on_clicked(self.plot_3d_gamut)
 
-        ax_btn_wireframe = plt.axes([0.81, 0.1, 0.1, 0.055])
+        ax_btn_wireframe = plt.axes([0.81, 0.15, 0.1, 0.025])
         btn_save = Button(ax_btn_wireframe, 'Save colormap')
         btn_save.on_clicked(self.save_colormap)
+
+        ax_btn_props = plt.axes([0.81, 0.1, 0.1, 0.025])
+        btn_save = Button(ax_btn_props, 'Properties')
+        btn_save.on_clicked(self.show_viscm)
 
         axcolor = 'None'
         ax_jk_min = plt.axes([0.1, 0.1, 0.5, 0.03], axisbg=axcolor)
@@ -446,6 +451,12 @@ class viscm_editor(object):
             print("Saved colormap to /tmp/new_cm.py")
             print("*" * 50)
 
+    def show_viscm(self, event):
+        cm = LinearSegmentedColormap.from_list(
+            'test_cm',
+            self.cmap_model.get_sRGB(num=64)[0])
+        viscm(cm, name='test_cm', show_gamut=False, axes=None)
+
     def _jk_update(self, val):
         jk_min = self.jk_min_slider.val
         jk_max = self.jk_max_slider.val
@@ -487,7 +498,7 @@ class BezierCMapModel(object):
 
     def get_sRGB(self, num=200):
         # Return sRGB and out-of-gamut mask
-        JK, ap, bp = self.get_JKapbp()
+        JK, ap, bp = self.get_JKapbp(num=num)
         JMh = _JKapbp_to_JMh(np.column_stack((JK, ap, bp)))
         sRGB = _JMh_to_sRGB(JMh)
         oog = np.any((sRGB > 1) | (sRGB < 0), axis=-1)

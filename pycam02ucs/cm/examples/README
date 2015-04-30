@@ -1,0 +1,19 @@
+Some example data for testing colormaps.
+
+hist2d.txt:
+
+  A 2d histogram of samples from a probability model. (Specifically,
+  it's Eposterior-flat-S-40 from
+  praglearn/praglearn/figures/Eposterior.py. The previous sentence
+  won't make any sense unless you are Nathaniel, and that's ok.)
+
+st-helens_before-modified.txt.gz:
+
+  Heightmap of Mt. St. Helens, taken from
+     https://github.com/agile-geoscience/notebooks/blob/master/data/st-helens_before.txt
+  So Apache 2.0 licensed, I guess. See
+    http://nbviewer.ipython.org/github/agile-geoscience/notebooks/blob/master/Mt_St-Helens.ipynb
+  for example using it.
+
+  This copy is modified from the version linked above -- it has had
+  all -32767 values replaced by NaNs.

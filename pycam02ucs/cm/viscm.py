@@ -5,6 +5,8 @@
 # Simple script using CIECAM02 and CAM02-UCS to visualize properties of a
 # matplotlib colormap
 
+import os.path
+
 import numpy as np
 
 # Most of this file doesn't actually need matpotlib, and I'm too lazy ATM to
@@ -15,6 +17,7 @@ try:
     import mpl_toolkits.mplot3d
     from matplotlib.gridspec import GridSpec
     from matplotlib.widgets import Button, Slider
+    import matplotlib.colors
 except ImportError:
     print("\nWarning! could not import matplotlib\n")
     pass
@@ -97,7 +100,7 @@ TRITANOMALY_10 = [[1.255528, -0.076749, -0.178779],
 
 
 def _apply_rgb_mat(mat, rgb):
-    return np.clip(np.dot(mat, rgb.T).T, 0, 1)
+    return np.clip(np.einsum("...ij,...j->...i", mat, rgb), 0, 1)
 
 # sRGB corners: a' goes from -37.4 to 45
 AP_LIM = (-38, 46)
@@ -116,22 +119,62 @@ def _setup_JKapbp_axis(ax):
     ax.set_zlim(*JK_LIM)
 
 
+# Adapt a matplotlib colormap to a linearly transformed version -- useful for
+# visualizing how colormaps look given color deficiency.
+# Kinda a hack, b/c we inherit from Colormap (this is required), but then
+# ignore its implementation entirely.
+class TransformedCMap(matplotlib.colors.Colormap):
+    def __init__(self, transform, base_cmap):
+        self.transform = np.asarray(transform)
+        assert self.transform.shape[0] == self.transform.shape[1]
+        # Convert RGB transformation matrix to RGBA transformation matrix
+        if self.transform.shape == (3, 3):
+            t = np.eye(4)
+            t[:3, :3] = self.transform
+            self.transform = t
+        self.base_cmap = base_cmap
+
+    def __call__(self, *args, **kwargs):
+        fx = self.base_cmap(*args, **kwargs)
+        tfx = _apply_rgb_mat(self.transform, fx)
+        return tfx
+
+    def set_bad(self, *args, **kwargs):
+        self.base_cmap.set_bad(*args, **kwargs)
+
+    def set_under(self, *args, **kwargs):
+        self.base_cmap.set_under(*args, **kwargs)
+
+    def set_over(self, *args, **kwargs):
+        self.base_cmap.set_over(*args, **kwargs)
+
+    def is_gray(self):
+        return False
+
 def _vis_axes():
-    grid = GridSpec(5, 7,
-                    width_ratios=[1, 1, 1, 1, 1, 1, 6],
-                    height_ratios=[1, 1, 1, 1, 2])
+    grid = GridSpec(10, 8,
+                    width_ratios=[1, 1, 1, 1, 1, 1, 2, 2],
+                    height_ratios=[1] * 10)
     axes = {'cmap': grid[0, :3],
-            'deltas': grid[0, 3:6],
-            'deuteranomaly': grid[1, :3],
+            'deltas': grid[1:4, :3],
+            'deuteranomaly': grid[0, 3:6],
             'deuteranopia': grid[1, 3:6],
-            'protanomaly': grid[2, :3],
-            'protanopia': grid[2, 3:6],
-            'lightness': grid[3, :2],
-            'colourfulness': grid[3, 2:4],
-            'hue': grid[3, 4:6]}
+            'protanomaly': grid[2, 3:6],
+            'protanopia': grid[3, 3:6],
+            'lightness': grid[4:6, :2],
+            'colourfulness': grid[4:6, 2:4],
+            'hue': grid[4:6, 4:6],
+
+            'image0': grid[0:2, 6],
+            'image0-cb': grid[0:2, 7],
+            'image1': grid[2:4, 6],
+            'image1-cb': grid[2:4, 7],
+            'image2': grid[4:6, 6],
+            'image2-cb': grid[4:6, 7],
+    }
 
     axes = {key: plt.subplot(value) for (key, value) in axes.items()}
-    axes['gamut'] = plt.subplot(grid[4, :6], projection='3d')
+    axes['gamut'] = plt.subplot(grid[6:, :6], projection='3d')
 
     return axes
 
@@ -222,6 +265,37 @@ def viscm(cm, name=None, N=256, N_dots=50, show_gamut=False, axes=None):
 
     _setup_JKapbp_axis(ax)
 
+    images = []
+    image_args = []
+    example_dir = os.path.dirname(__file__) + "/examples/"
+
+    images.append(np.loadtxt(example_dir + "hist2d.txt"))
+    image_args.append({"aspect": "equal",
+                       "origin": "lower",
+                       "interpolation": "nearest",
+                       "vmin": 0})
+
+    images.append(np.loadtxt(example_dir + "st-helens_before-modified.txt.gz"))
+    image_args.append({})
+
+    # Adapted from http://matplotlib.org/mpl_examples/images_contours_and_fields/pcolormesh_levels.py
+    dx = dy = 0.05
+    y, x = np.mgrid[-5 : 5 + dy : dy, -5 : 10 + dx : dx]
+    z = np.sin(x) ** 10 + np.cos(10 + y * x) + np.cos(x) + 0.2 * y + 0.1 * x
+    images.append(z)
+    image_args.append({})
+
+    deuter_cm = TransformedCMap(DEUTERANOMALY_05, cm)
+    for i, (image, args) in enumerate(zip(images, image_args)):
+        ax = axes['image%i' % (i,)]
+        ax.imshow(image, cmap=cm, **args)
+        ax.get_xaxis().set_visible(False)
+        ax.get_yaxis().set_visible(False)
+
+        ax_cb = axes['image%i-cb' % (i,)]
+        ax_cb.imshow(image, cmap=deuter_cm, **args)
+        ax_cb.get_xaxis().set_visible(False)
+        ax_cb.get_yaxis().set_visible(False)
 
 def sRGB_gamut_patch(resolution=20):
     step = 1.0 / resolution

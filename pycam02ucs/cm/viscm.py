@@ -542,8 +542,6 @@ class viscm_editor(object):
 
         self.cmap_model.set_JK_minmax(smallest, largest)
 
-        self.fig.tight_layout()
-
 class BezierCMapModel(object):
     def __init__(self, bezier_model, min_JK, max_JK):
         self.bezier_model = bezier_model

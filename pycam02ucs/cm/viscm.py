@@ -328,7 +328,7 @@ def _viscm_editor_axes():
 
 
 class viscm_editor(object):
-    def __init__(self, min_JK=15, max_JK=95):
+    def __init__(self, min_JK=15, max_JK=95, xp=None, yp=None):
         from pycam02ucs.cm.bezierbuilder import BezierModel, BezierBuilder
 
         axes = _viscm_editor_axes()
@@ -365,8 +365,12 @@ class viscm_editor(object):
         #     [-34, -41.447876447876524, 36.28563443264386, 25.357741755170423, 41]
         # -- njs, 2015-04-05
 
-        xp = [-4, 40, -9.6]
-        yp = [-34, 4.6, 41]
+        if xp is None:
+            xp = [-4, 40, -9.6]
+
+        if yp is None:
+            yp = [-34, 4.6, 41]
+
         self.bezier_model = BezierModel(xp, yp)
         self.cmap_model = BezierCMapModel(self.bezier_model,
                                           self.jk_min_slider.val,
@@ -401,6 +405,7 @@ class viscm_editor(object):
 
         template = textwrap.dedent('''
         from matplotlib.colors import LinearSegmentedColormap
+        from numpy import nan, inf
 
         # Used to reconstruct the colormap in pycam02ucs.cm.viscm
         parameters = {{'xp': {xp},
@@ -655,5 +660,18 @@ class WireframeView(object):
 
 
 if __name__ == "__main__":
-    viscm_editor()
+    import sys
+    import os
+
+    ns = {'__name__': ''}
+
+    if len(sys.argv) > 1:
+        cmap_params = sys.argv[1]
+        if os.path.isfile(cmap_params):
+            with open(cmap_params) as f:
+                code = compile(f.read(), cmap_params, 'exec')
+                exec(code, globals(), ns)
+
+    params = ns.get('parameters', {})
+    viscm_editor(**params)
     plt.show()

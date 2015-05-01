@@ -55,9 +55,29 @@ class BezierModel(object):
     def get_bezier_points(self, num=200):
         return self.get_bezier_points_at(np.linspace(0, 1, num))
 
-    def get_bezier_points_at(self, at):
-        x, y = Bezier(list(zip(self._xp, self._yp)), at).T
-        return x, y
+    def get_bezier_points_at(self, at, grid=256):
+        at = np.asarray(at)
+        # The Bezier curve is parameterized by a value t which ranges from 0
+        # to 1. However, there is a nonlinear relationship between this value
+        # and arclength. We want to parameterize by t', which measures
+        # normalized arclength. To do this, we have to calculate the function
+        # arclength(t), and then invert it.
+        t = np.linspace(0, 1, grid)
+        x, y = Bezier(list(zip(self._xp, self._yp)), t).T
+        x_deltas = np.diff(x)
+        y_deltas = np.diff(y)
+        arclength_deltas = np.empty(t.shape)
+        arclength_deltas[0] = 0
+        np.hypot(x_deltas, y_deltas, out=arclength_deltas[1:])
+        arclength = np.cumsum(arclength_deltas)
+        arclength /= arclength[-1]
+        # Now (t, arclength) is a LUT describing the t -> arclength mapping
+        # Invert it to get at -> t
+        at_t = np.interp(at, arclength, t)
+        # And finally look up at the Bezier values at at_t
+        # (Might be quicker to np.interp againts x and y, but eh, doesn't
+        # really matter.)
+        return Bezier(list(zip(self._xp, self._yp)), at_t).T
 
     def add_point(self, i, new_x, new_y):
         self._xp.insert(i, new_x)

@@ -485,10 +485,12 @@ class viscm_editor(object):
         # -- njs, 2015-04-05
 
         if xp is None:
-            xp = [-4, 40, -9.6]
+            xp = [-4, 38.289146128951984, 52.1923711457504,
+                  39.050944362271053, 18.60872492130315, -9.6]
 
         if yp is None:
-            yp = [-34, 4.6, 41]
+            yp = [-34, -34.34528254916614, -21.594701710471412,
+                  31.701084689194829, 29.510846891948262, 41]
 
         self.bezier_model = BezierModel(xp, yp)
         self.cmap_model = BezierCMapModel(self.bezier_model,

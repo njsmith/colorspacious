@@ -409,16 +409,16 @@ class viscm_editor(object):
         axes = _viscm_editor_axes()
 
         ax_btn_wireframe = plt.axes([0.7, 0.15, 0.1, 0.025])
-        btn_wireframe = Button(ax_btn_wireframe, 'Show 3D gamut')
-        btn_wireframe.on_clicked(self.plot_3d_gamut)
+        self.btn_wireframe = Button(ax_btn_wireframe, 'Show 3D gamut')
+        self.btn_wireframe.on_clicked(self.plot_3d_gamut)
 
         ax_btn_wireframe = plt.axes([0.81, 0.15, 0.1, 0.025])
-        btn_save = Button(ax_btn_wireframe, 'Save colormap')
-        btn_save.on_clicked(self.save_colormap)
+        self.btn_save = Button(ax_btn_wireframe, 'Save colormap')
+        self.btn_save.on_clicked(self.save_colormap)
 
         ax_btn_props = plt.axes([0.81, 0.1, 0.1, 0.025])
-        btn_save = Button(ax_btn_props, 'Properties')
-        btn_save.on_clicked(self.show_viscm)
+        self.btn_props = Button(ax_btn_props, 'Properties')
+        self.btn_props.on_clicked(self.show_viscm)
 
         axcolor = 'None'
         ax_jk_min = plt.axes([0.1, 0.1, 0.5, 0.03], axisbg=axcolor)

@@ -154,6 +154,9 @@ class TransformedCMap(matplotlib.colors.Colormap):
 
 def _vis_axes():
     grid = GridSpec(10, 8,
+                    left=0.02,
+                    right=0.98,
+                    bottom=0.02,
                     width_ratios=[1, 1, 1, 1, 1, 1, 2, 2],
                     height_ratios=[1] * 10)
     axes = {'cmap': grid[0, :3],
@@ -183,16 +186,15 @@ def _vis_axes():
 # N=256 matches the default quantization for LinearSegmentedColormap, which
 # reduces quantization/aliasing artifacts (esp. in the perceptual deltas
 # plot).
-def viscm(cm, name=None, N=256, N_dots=50, show_gamut=False, axes=None):
+def viscm(cm, name=None, N=256, N_dots=50, show_gamut=False):
     if isinstance(cm, str):
         cm = plt.get_cmap(cm)
     if name is None:
         name = cm.name
 
-    if axes is None:
-        fig = plt.figure()
-        fig.suptitle("Colormap evaluation: %s" % (name,), fontsize=24)
-        axes = _vis_axes()
+    fig = plt.figure()
+    fig.suptitle("Colormap evaluation: %s" % (name,), fontsize=24)
+    axes = _vis_axes()
 
     x = np.linspace(0, 1, N)
     x_dots = np.linspace(0, 1, N_dots)
@@ -202,13 +204,20 @@ def viscm(cm, name=None, N=256, N_dots=50, show_gamut=False, axes=None):
     ax = axes['cmap']
     _show_cmap(ax, RGB)
     ax.set_title("The colormap in its glory")
+    ax.get_xaxis().set_visible(False)
     ax.get_yaxis().set_visible(False)
+
+    def label(ax, s):
+        ax.text(0.95, 0.05, s,
+                horizontalalignment="right",
+                verticalalignment="bottom",
+                transform=ax.transAxes)
 
     ax = axes['deltas']
     local_deltas = N * deltaEp_sRGB(RGB[:-1, :], RGB[1:, :])
     ax.plot(x[1:], local_deltas)
     arclength = np.sum(local_deltas) / N
-    ax.set_title("Perceptual deltas (total: %0.2f)" % (arclength,))
+    label(ax, "Perceptual deltas (total: %0.2f)" % (arclength,))
     ax.set_ylim(0, ax.get_ylim()[1])
     # ax.text(0.05, 0.9, "Total length: %0.2f" % (arclength,),
     #         horizontalalignment="left",
@@ -217,10 +226,7 @@ def viscm(cm, name=None, N=256, N_dots=50, show_gamut=False, axes=None):
 
     def anom(ax, mat, name):
         _show_cmap(ax, _apply_rgb_mat(mat, RGB))
-        ax.text(0.95, 0.05, name,
-                horizontalalignment="right",
-                verticalalignment="bottom",
-                transform=ax.transAxes)
+        label(ax, name)
         ax.get_xaxis().set_visible(False)
         ax.get_yaxis().set_visible(False)
 
@@ -233,16 +239,17 @@ def viscm(cm, name=None, N=256, N_dots=50, show_gamut=False, axes=None):
     ciecam02 = _sRGB_to_CIECAM02(RGB)
     ax = axes['lightness']
     ax.plot(x, ciecam02.J, label="Lightness (J)")
-    ax.set_title("Lightness (J)")
+    label(ax, "Lightness (J)")
     ax.set_ylim(0, 105)
 
     ax = axes['colourfulness']
     ax.plot(x, ciecam02.M, label="Colourfulness (M)")
-    ax.set_title("Colourfulness (M)")
+    label(ax, "Colourfulness (M)")
 
     ax = axes['hue']
     ax.plot(x, ciecam02.h, label="Hue angle (h)")
-    ax.set_title("Hue angle (h)")
+    label(ax, "Hue angle (h)")
+    ax.set_ylim(0, 360)
 
     JKapbp = _CIECAM02_to_JKapbp(ciecam02)
     ax = axes['gamut']
@@ -297,6 +304,9 @@ def viscm(cm, name=None, N=256, N_dots=50, show_gamut=False, axes=None):
         ax_cb.imshow(image, cmap=deuter_cm, **args)
         ax_cb.get_xaxis().set_visible(False)
         ax_cb.get_yaxis().set_visible(False)
+
+    axes['image0'].set_title("Sample images")
+    axes['image0-cb'].set_title("Moderate deuter.")
 
 def sRGB_gamut_patch(resolution=20):
     step = 1.0 / resolution
@@ -530,6 +540,7 @@ class viscm_editor(object):
             'test_cm',
             self.cmap_model.get_sRGB(num=64)[0])
         viscm(cm, name='test_cm', show_gamut=False, axes=None)
+        plt.show()
 
     def _jk_update(self, val):
         jk_min = self.jk_min_slider.val

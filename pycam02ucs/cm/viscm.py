@@ -402,11 +402,11 @@ def draw_sRGB_gamut_JK_slice(ax, JK, ap_lim=(-50, 50), bp_lim=(-50, 50),
 
 
 def _viscm_editor_axes():
-    grid = GridSpec(3, 1,
-                    width_ratios=[1],
-                    height_ratios=[3, 3, 1])
+    grid = GridSpec(1, 2,
+                    width_ratios=[5, 1],
+                    height_ratios=[6, 1])
     axes = {'bezier': grid[0, 0],
-            'cm': grid[1, 0]}
+            'cm': grid[0, 1]}
 
     axes = {key: plt.subplot(value) for (key, value) in axes.items()}
     return axes
@@ -595,18 +595,19 @@ class CMapView(object):
         self.cmap_model = cmap_model
 
         rgb_display, oog_display = self._drawable_arrays()
-        self.image = self.ax.imshow(rgb_display, extent=(0, 1, 0, 0.2))
+        self.image = self.ax.imshow(rgb_display, extent=(0, 0.2, 0, 1))
         self.gamut_alert_image = self.ax.imshow(oog_display,
-                                                extent=(0, 1, 0.05, 0.15))
-        self.ax.set_xlim(0, 1)
-        self.ax.set_ylim(0, 0.2)
+                                                extent=(0.05, 0.15, 0, 1))
+        self.ax.set_xlim(0, 0.2)
+        self.ax.set_ylim(0, 1)
+        self.ax.get_xaxis().set_visible(False)
 
         self.cmap_model.trigger.add_callback(self._refresh)
 
     def _drawable_arrays(self):
         rgb, oog = self.cmap_model.get_sRGB()
-        rgb_display = rgb[np.newaxis, ...]
-        oog_display = np.empty((1, rgb.shape[0], 4))
+        rgb_display = rgb[:, np.newaxis, :]
+        oog_display = np.empty((rgb.shape[0], 1, 4))
         oog_display[...] = [0, 0, 0, 0]
         oog_display[:, oog, :] = [0, 1, 1, 1]
         return rgb_display, oog_display
@@ -648,7 +649,7 @@ class HighlightPointBuilder(object):
         self.canvas.mpl_connect("button_release_event",
                                 self._on_button_release)
 
-        self.marker_line = self.ax.axvline(highlight_point_model.get_point(),
+        self.marker_line = self.ax.axhline(highlight_point_model.get_point(),
                                            linewidth=3, color="r")
 
         self.highlight_point_model.trigger.add_callback(self._refresh)
@@ -659,11 +660,11 @@ class HighlightPointBuilder(object):
         if event.button != 1:
             return
         self._in_drag = True
-        self.highlight_point_model.set_point(event.xdata)
+        self.highlight_point_model.set_point(event.ydata)
 
     def _on_motion(self, event):
-        if self._in_drag and event.xdata is not None:
-            self.highlight_point_model.set_point(event.xdata)
+        if self._in_drag and event.ydata is not None:
+            self.highlight_point_model.set_point(event.ydata)
 
     def _on_button_release(self, event):
         if event.button != 1:
@@ -672,7 +673,7 @@ class HighlightPointBuilder(object):
 
     def _refresh(self):
         point = self.highlight_point_model.get_point()
-        self.marker_line.set_data([point, point], [0, 1])
+        self.marker_line.set_data([0, 1], [point, point])
         self.canvas.draw()
 
 

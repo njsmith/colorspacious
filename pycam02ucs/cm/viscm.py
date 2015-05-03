@@ -363,8 +363,10 @@ def sRGB_gamut_JK_slice(JK,
                             axis=2)
     JMh = _JKapbp_to_JMh(JKapbp)
     sRGB = _JMh_to_sRGB(JMh)
-    sRGB[np.any((sRGB < 0) | (sRGB > 1), axis=-1)] = np.nan
-    return sRGB
+    sRGBA = np.concatenate((sRGB, np.ones(sRGB.shape[:2] + (1,))),
+                           axis=2)
+    sRGBA[np.any((sRGB < 0) | (sRGB > 1), axis=-1)] = [0, 0, 0, 0]
+    return sRGBA
 
 
 def draw_pure_hue_angles(ax):
@@ -539,7 +541,7 @@ class viscm_editor(object):
         cm = LinearSegmentedColormap.from_list(
             'test_cm',
             self.cmap_model.get_sRGB(num=64)[0])
-        viscm(cm, name='test_cm', show_gamut=False, axes=None)
+        viscm(cm, name='test_cm', show_gamut=False)
         plt.show()
 
     def _jk_update(self, val):
@@ -595,9 +597,11 @@ class CMapView(object):
         self.cmap_model = cmap_model
 
         rgb_display, oog_display = self._drawable_arrays()
-        self.image = self.ax.imshow(rgb_display, extent=(0, 0.2, 0, 1))
+        self.image = self.ax.imshow(rgb_display, extent=(0, 0.2, 0, 1),
+                                    origin="lower")
         self.gamut_alert_image = self.ax.imshow(oog_display,
-                                                extent=(0.05, 0.15, 0, 1))
+                                                extent=(0.05, 0.15, 0, 1),
+                                                origin="lower")
         self.ax.set_xlim(0, 0.2)
         self.ax.set_ylim(0, 1)
         self.ax.get_xaxis().set_visible(False)
@@ -609,7 +613,7 @@ class CMapView(object):
         rgb_display = rgb[:, np.newaxis, :]
         oog_display = np.empty((rgb.shape[0], 1, 4))
         oog_display[...] = [0, 0, 0, 0]
-        oog_display[:, oog, :] = [0, 1, 1, 1]
+        oog_display[oog, :, :] = [0, 1, 1, 1]
         return rgb_display, oog_display
 
     def _refresh(self):
@@ -685,6 +689,15 @@ class GamutViewer2D(object):
         self.ap_lim = ap_lim
         self.bp_lim = bp_lim
 
+        self.bgcolors = {"light": (0.9, 0.9, 0.9),
+                         "dark": (0.1, 0.1, 0.1)}
+        # We want some hysteresis, so that there's no point where wiggling the
+        # line back and forth causes background flickering.
+        self.bgcolor_ranges = {"light": (0, 60), "dark": (40, 100)}
+        self.bg_opposites = {"light": "dark", "dark": "light"}
+        self.bg = "light"
+        self.ax.set_axis_bgcolor(self.bgcolors[self.bg])
+
         self.image = self.ax.imshow([[[0, 0, 0]]], aspect="equal",
                                     extent=ap_lim + bp_lim,
                                     origin="lower")
@@ -693,6 +706,10 @@ class GamutViewer2D(object):
 
     def _refresh(self):
         JK, _, _ = self.highlight_point_model.get_JKapbp()
+        low, high = self.bgcolor_ranges[self.bg]
+        if not (low <= JK <= high):
+            self.bg = self.bg_opposites[self.bg]
+            self.ax.set_axis_bgcolor(self.bgcolors[self.bg])
         sRGB = sRGB_gamut_JK_slice(JK, self.ap_lim, self.bp_lim)
         self.image.set_data(sRGB)
 

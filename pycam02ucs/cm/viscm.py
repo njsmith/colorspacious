@@ -51,12 +51,7 @@ def _JMh_to_sRGB(JMh):
 
 
 def _show_cmap(ax, rgb):
-    ax.imshow(rgb[np.newaxis, ...],
-              # (left, right, bottom, top)
-              # left and right are real
-              # bottom and top are used to set the aspect ratio
-              extent=(0, 1, 0, 0.2),
-              )
+    ax.imshow(rgb[np.newaxis, ...], aspect="auto")
 
 # Matrices for simulating anomalous color vision from:
 #   Machado, Oliveira, & Fernandes, A Physiologically-based Model for

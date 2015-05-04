@@ -60,6 +60,13 @@ class LuoUniformSpace(object):
             + (bp1 - bp2) ** 2
             )
 
+    def deltaEp_sRGB(self, RGB1, RGB2):
+        XYZ1 = sRGB_to_XYZ(RGB1)
+        XYZ2 = sRGB_to_XYZ(RGB2)
+        JMh1 = _XYZ_to_JMh(XYZ1)
+        JMh2 = _XYZ_to_JMh(XYZ2)
+        return self.deltaEp_JMh(JMh1, JMh2)
+
 UCS_space = LuoUniformSpace(1.00, 0.007, 0.0228)
 LCD_space = LuoUniformSpace(1.24, 0.007, 0.0363)
 SCD_space = LuoUniformSpace(0.77, 0.007, 0.0053)    

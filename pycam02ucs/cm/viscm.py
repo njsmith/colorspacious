@@ -24,23 +24,24 @@ except ImportError:
     pass
 
 from pycam02ucs import ViewingConditions
-from pycam02ucs.cam02ucs import deltaEp_sRGB, UCS_space
+from pycam02ucs.cam02ucs import UCS_space, SCD_space, LCD_space
 from pycam02ucs.srgb import sRGB_to_XYZ, XYZ_to_sRGB
 from pycam02ucs.cm.minimvc import Trigger
 
+# Our preferred space (mostly here so we can easily tweak it when curious)
+UNIFORM_SPACE = UCS_space
 
 def _sRGB_to_CIECAM02(RGB):
     XYZ = sRGB_to_XYZ(RGB)
     return ViewingConditions.sRGB.XYZ_to_CIECAM02(XYZ)
 
-
 def _CIECAM02_to_JKapbp(ciecam02):
     JMh = np.column_stack((ciecam02.J, ciecam02.M, ciecam02.h))
-    return UCS_space.JMh_to_JKapbp(JMh)
+    return UNIFORM_SPACE.JMh_to_JKapbp(JMh)
 
 
 def _JKapbp_to_JMh(JKapbp):
-    return UCS_space.JKapbp_to_JMh(JKapbp)
+    return UNIFORM_SPACE.JKapbp_to_JMh(JKapbp)
 
 
 def _JMh_to_sRGB(JMh):
@@ -148,32 +149,39 @@ class TransformedCMap(matplotlib.colors.Colormap):
         return False
 
 def _vis_axes():
-    grid = GridSpec(10, 8,
+    grid = GridSpec(10, 4,
                     left=0.02,
                     right=0.98,
                     bottom=0.02,
-                    width_ratios=[1, 1, 1, 1, 1, 1, 2, 2],
+                    width_ratios=[1] * 4,
                     height_ratios=[1] * 10)
-    axes = {'cmap': grid[0, :3],
-            'deltas': grid[1:4, :3],
-            'deuteranomaly': grid[0, 3:6],
-            'deuteranopia': grid[1, 3:6],
-            'protanomaly': grid[2, 3:6],
-            'protanopia': grid[3, 3:6],
-            'lightness': grid[4:6, :2],
-            'colourfulness': grid[4:6, 2:4],
-            'hue': grid[4:6, 4:6],
+    axes = {'cmap': grid[0, 0],
+            'deltas': grid[1:4, 0],
 
-            'image0': grid[0:2, 6],
-            'image0-cb': grid[0:2, 7],
-            'image1': grid[2:4, 6],
-            'image1-cb': grid[2:4, 7],
-            'image2': grid[4:6, 6],
-            'image2-cb': grid[4:6, 7],
+            'cmap-greyscale': grid[0, 1],
+            'lightness-deltas': grid[1:4, 1],
+
+            'deuteranomaly': grid[4, 0],
+            'deuteranopia': grid[5, 0],
+            'protanomaly': grid[4, 1],
+            'protanopia': grid[5, 1],
+
+            # 'lightness': grid[4:6, 1],
+            # 'colourfulness': grid[4:6, 2],
+            # 'hue': grid[4:6, 3],
+
+            'image0': grid[0:3, 2],
+            'image0-cb': grid[0:3, 3],
+            'image1': grid[3:6, 2],
+            'image1-cb': grid[3:6, 3],
+            'image2': grid[6:9, 2],
+            'image2-cb': grid[6:9, 3],
+
+            'gamut-checkbox': grid[9, 2],
     }
 
     axes = {key: plt.subplot(value) for (key, value) in axes.items()}
-    axes['gamut'] = plt.subplot(grid[6:, :6], projection='3d')
+    axes['gamut'] = plt.subplot(grid[6:, :2], projection='3d')
 
     return axes
 
@@ -181,127 +189,151 @@ def _vis_axes():
 # N=256 matches the default quantization for LinearSegmentedColormap, which
 # reduces quantization/aliasing artifacts (esp. in the perceptual deltas
 # plot).
-def viscm(cm, name=None, N=256, N_dots=50, show_gamut=False):
-    if isinstance(cm, str):
-        cm = plt.get_cmap(cm)
-    if name is None:
-        name = cm.name
+class viscm(object):
+    def __init__(self, cm, name=None, N=256, N_dots=50, show_gamut=False):
+        if isinstance(cm, str):
+            cm = plt.get_cmap(cm)
+        if name is None:
+            name = cm.name
 
-    fig = plt.figure()
-    fig.suptitle("Colormap evaluation: %s" % (name,), fontsize=24)
-    axes = _vis_axes()
+        fig = plt.figure()
+        fig.suptitle("Colormap evaluation: %s" % (name,), fontsize=24)
+        axes = _vis_axes()
 
-    x = np.linspace(0, 1, N)
-    x_dots = np.linspace(0, 1, N_dots)
-    RGB = cm(x)[:, :3]
-    RGB_dots = cm(x_dots)[:, :3]
+        x = np.linspace(0, 1, N)
+        x_dots = np.linspace(0, 1, N_dots)
+        RGB = cm(x)[:, :3]
+        RGB_dots = cm(x_dots)[:, :3]
 
-    ax = axes['cmap']
-    _show_cmap(ax, RGB)
-    ax.set_title("The colormap in its glory")
-    ax.get_xaxis().set_visible(False)
-    ax.get_yaxis().set_visible(False)
-
-    def label(ax, s):
-        ax.text(0.95, 0.05, s,
-                horizontalalignment="right",
-                verticalalignment="bottom",
-                transform=ax.transAxes)
-
-    ax = axes['deltas']
-    local_deltas = N * deltaEp_sRGB(RGB[:-1, :], RGB[1:, :])
-    ax.plot(x[1:], local_deltas)
-    arclength = np.sum(local_deltas) / N
-    label(ax, "Perceptual deltas (total: %0.2f)" % (arclength,))
-    ax.set_ylim(0, ax.get_ylim()[1])
-    # ax.text(0.05, 0.9, "Total length: %0.2f" % (arclength,),
-    #         horizontalalignment="left",
-    #         verticalalignment="top",
-    #         transform=ax.transAxes)
-
-    def anom(ax, mat, name):
-        _show_cmap(ax, _apply_rgb_mat(mat, RGB))
-        label(ax, name)
+        ax = axes['cmap']
+        _show_cmap(ax, RGB)
+        ax.set_title("The colormap in its glory")
         ax.get_xaxis().set_visible(False)
         ax.get_yaxis().set_visible(False)
 
-    anom(axes['deuteranomaly'], DEUTERANOMALY_05, "Moderate deuteranomaly")
-    anom(axes['deuteranopia'], DEUTERANOMALY_10, "Complete deuteranopia")
+        def label(ax, s):
+            ax.text(0.95, 0.05, s,
+                    horizontalalignment="right",
+                    verticalalignment="bottom",
+                    transform=ax.transAxes)
 
-    anom(axes['protanomaly'], PROTANOMALY_05, "Moderate protanomaly")
-    anom(axes['protanopia'], PROTANOMALY_10, "Complete protanopia")
+        ax = axes['deltas']
+        local_deltas = N * UNIFORM_SPACE.deltaEp_sRGB(RGB[:-1, :], RGB[1:, :])
+        ax.plot(x[1:], local_deltas)
+        arclength = np.sum(local_deltas) / N
+        label(ax, "Perceptual deltas (total: %0.2f)" % (arclength,))
+        ax.set_ylim(0, ax.get_ylim()[1])
+        ax.get_xaxis().set_visible(False)
 
-    ciecam02 = _sRGB_to_CIECAM02(RGB)
-    ax = axes['lightness']
-    ax.plot(x, ciecam02.J, label="Lightness (J)")
-    label(ax, "Lightness (J)")
-    ax.set_ylim(0, 105)
+        ciecam02 = _sRGB_to_CIECAM02(RGB)
+        JKapbp = _CIECAM02_to_JKapbp(ciecam02)
 
-    ax = axes['colourfulness']
-    ax.plot(x, ciecam02.M, label="Colourfulness (M)")
-    label(ax, "Colourfulness (M)")
+        ax = axes['cmap-greyscale']
+        grey_RGB = _JMh_to_sRGB(np.column_stack((ciecam02.J,
+                                                 np.zeros_like(ciecam02.M),
+                                                 ciecam02.h)))
+        _show_cmap(ax, grey_RGB)
+        ax.set_title("Black-and-white printed")
+        ax.get_xaxis().set_visible(False)
+        ax.get_yaxis().set_visible(False)
 
-    ax = axes['hue']
-    ax.plot(x, ciecam02.h, label="Hue angle (h)")
-    label(ax, "Hue angle (h)")
-    ax.set_ylim(0, 360)
+        ax = axes['lightness-deltas']
+        ax.plot(x[1:], N * np.diff(JKapbp[:, 0]))
+        label(ax,
+              "Perceptual lightness deltas (total: %0.2f)"
+              % (JKapbp[-1, 0] - JKapbp[0, 0]))
+        ax.set_ylim(0, ax.get_ylim()[1])
+        ax.get_xaxis().set_visible(False)
 
-    JKapbp = _CIECAM02_to_JKapbp(ciecam02)
-    ax = axes['gamut']
-    ax.plot(JKapbp[:, 1], JKapbp[:, 2], JKapbp[:, 0])
-    JKapbp_dots = _CIECAM02_to_JKapbp(_sRGB_to_CIECAM02(RGB_dots))
-    ax.scatter(JKapbp_dots[:, 1],
-               JKapbp_dots[:, 2],
-               JKapbp_dots[:, 0],
-               c=RGB_dots[:, :],
-               s=80)
+        # ax = axes['lightness']
+        # ax.plot(x, ciecam02.J)
+        # label(ax, "Lightness (J)")
+        # ax.set_ylim(0, 105)
 
-    # Draw a wireframe indicating the sRGB gamut
-    if show_gamut:
-        gamut_patch = sRGB_gamut_patch()
+        # ax = axes['colourfulness']
+        # ax.plot(x, ciecam02.M)
+        # label(ax, "Colourfulness (M)")
+
+        # ax = axes['hue']
+        # ax.plot(x, ciecam02.h)
+        # label(ax, "Hue angle (h)")
+        # ax.set_ylim(0, 360)
+
+        def anom(ax, mat, name):
+            _show_cmap(ax, _apply_rgb_mat(mat, RGB))
+            label(ax, name)
+            ax.get_xaxis().set_visible(False)
+            ax.get_yaxis().set_visible(False)
+
+        anom(axes['deuteranomaly'], DEUTERANOMALY_05, "Moderate deuteranomaly")
+        anom(axes['deuteranopia'], DEUTERANOMALY_10, "Complete deuteranopia")
+
+        anom(axes['protanomaly'], PROTANOMALY_05, "Moderate protanomaly")
+        anom(axes['protanopia'], PROTANOMALY_10, "Complete protanopia")
+
+        ax = axes['gamut']
+        ax.plot(JKapbp[:, 1], JKapbp[:, 2], JKapbp[:, 0])
+        JKapbp_dots = _CIECAM02_to_JKapbp(_sRGB_to_CIECAM02(RGB_dots))
+        ax.scatter(JKapbp_dots[:, 1],
+                   JKapbp_dots[:, 2],
+                   JKapbp_dots[:, 0],
+                   c=RGB_dots[:, :],
+                   s=80)
+
+        # Draw a wireframe indicating the sRGB gamut
+        self.gamut_patch = sRGB_gamut_patch()
         # That function returns a patch where each face is colored to match
         # the represented colors. For present purposes we want something
         # less... colorful.
-        gamut_patch.set_facecolor([0.5, 0.5, 0.5, 0.1])
-        gamut_patch.set_edgecolor([0.2, 0.2, 0.2, 0.1])
-        ax.add_collection3d(gamut_patch)
+        self.gamut_patch.set_facecolor([0.5, 0.5, 0.5, 0.1])
+        self.gamut_patch.set_edgecolor([0.2, 0.2, 0.2, 0.1])
+        ax.add_collection3d(self.gamut_patch)
+        self.gamut_patch.set_visible(show_gamut)
 
-    _setup_JKapbp_axis(ax)
+        self.gamut_patch_toggle = Button(axes['gamut-checkbox'],
+                                         "<- Toggle gamut display")
+        def toggle(*args):
+            self.gamut_patch.set_visible(not self.gamut_patch.get_visible())
+            plt.draw()
+        self.gamut_patch_toggle.on_clicked(toggle)
 
-    images = []
-    image_args = []
-    example_dir = os.path.dirname(__file__) + "/examples/"
+        _setup_JKapbp_axis(ax)
 
-    images.append(np.loadtxt(example_dir + "hist2d.txt"))
-    image_args.append({"aspect": "equal",
-                       "origin": "lower",
-                       "interpolation": "nearest",
-                       "vmin": 0})
+        images = []
+        image_args = []
+        example_dir = os.path.dirname(__file__) + "/examples/"
 
-    images.append(np.loadtxt(example_dir + "st-helens_before-modified.txt.gz"))
-    image_args.append({})
+        images.append(np.loadtxt(example_dir + "hist2d.txt"))
+        image_args.append({"aspect": "equal",
+                           "origin": "lower",
+                           "interpolation": "nearest",
+                           "vmin": 0})
 
-    # Adapted from http://matplotlib.org/mpl_examples/images_contours_and_fields/pcolormesh_levels.py
-    dx = dy = 0.05
-    y, x = np.mgrid[-5 : 5 + dy : dy, -5 : 10 + dx : dx]
-    z = np.sin(x) ** 10 + np.cos(10 + y * x) + np.cos(x) + 0.2 * y + 0.1 * x
-    images.append(z)
-    image_args.append({})
+        images.append(np.loadtxt(example_dir
+                                 + "st-helens_before-modified.txt.gz"))
+        image_args.append({})
 
-    deuter_cm = TransformedCMap(DEUTERANOMALY_05, cm)
-    for i, (image, args) in enumerate(zip(images, image_args)):
-        ax = axes['image%i' % (i,)]
-        ax.imshow(image, cmap=cm, **args)
-        ax.get_xaxis().set_visible(False)
-        ax.get_yaxis().set_visible(False)
+        # Adapted from http://matplotlib.org/mpl_examples/images_contours_and_fields/pcolormesh_levels.py
+        dx = dy = 0.05
+        y, x = np.mgrid[-5 : 5 + dy : dy, -5 : 10 + dx : dx]
+        z = np.sin(x) ** 10 + np.cos(10 + y * x) + np.cos(x) + 0.2 * y + 0.1 * x
+        images.append(z)
+        image_args.append({})
 
-        ax_cb = axes['image%i-cb' % (i,)]
-        ax_cb.imshow(image, cmap=deuter_cm, **args)
-        ax_cb.get_xaxis().set_visible(False)
-        ax_cb.get_yaxis().set_visible(False)
+        deuter_cm = TransformedCMap(DEUTERANOMALY_05, cm)
+        for i, (image, args) in enumerate(zip(images, image_args)):
+            ax = axes['image%i' % (i,)]
+            ax.imshow(image, cmap=cm, **args)
+            ax.get_xaxis().set_visible(False)
+            ax.get_yaxis().set_visible(False)
 
-    axes['image0'].set_title("Sample images")
-    axes['image0-cb'].set_title("Moderate deuter.")
+            ax_cb = axes['image%i-cb' % (i,)]
+            ax_cb.imshow(image, cmap=deuter_cm, **args)
+            ax_cb.get_xaxis().set_visible(False)
+            ax_cb.get_yaxis().set_visible(False)
+
+        axes['image0'].set_title("Sample images")
+        axes['image0-cb'].set_title("Moderate deuter.")
 
 def sRGB_gamut_patch(resolution=20):
     step = 1.0 / resolution

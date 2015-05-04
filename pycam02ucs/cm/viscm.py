@@ -176,12 +176,11 @@ def _vis_axes():
             'image1-cb': grid[3:6, 3],
             'image2': grid[6:9, 2],
             'image2-cb': grid[6:9, 3],
-
-            'gamut-checkbox': grid[9, 2],
     }
 
     axes = {key: plt.subplot(value) for (key, value) in axes.items()}
     axes['gamut'] = plt.subplot(grid[6:, :2], projection='3d')
+    axes['gamut-toggle'] = plt.axes([0.01, 0.01, 0.08, 0.025])
 
     return axes
 
@@ -290,8 +289,7 @@ class viscm(object):
         ax.add_collection3d(self.gamut_patch)
         self.gamut_patch.set_visible(show_gamut)
 
-        self.gamut_patch_toggle = Button(axes['gamut-checkbox'],
-                                         "<- Toggle gamut display")
+        self.gamut_patch_toggle = Button(axes['gamut-toggle'], "Toggle gamut")
         def toggle(*args):
             self.gamut_patch.set_visible(not self.gamut_patch.get_visible())
             plt.draw()

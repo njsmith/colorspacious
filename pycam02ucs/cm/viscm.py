@@ -237,11 +237,13 @@ class viscm(object):
         ax.get_yaxis().set_visible(False)
 
         ax = axes['lightness-deltas']
-        ax.plot(x[1:], N * np.diff(JKapbp[:, 0]))
+        ax.axhline(0, linestyle="--", color="grey")
+        lightness_deltas = N * np.diff(JKapbp[:, 0])
+        ax.plot(x[1:], lightness_deltas)
         label(ax,
               "Perceptual lightness deltas (total: %0.2f)"
-              % (JKapbp[-1, 0] - JKapbp[0, 0]))
-        ax.set_ylim(0, ax.get_ylim()[1])
+              % (np.sum(np.abs(lightness_deltas)) / N,))
+        #ax.set_ylim(0, ax.get_ylim()[1])
         ax.get_xaxis().set_visible(False)
 
         # ax = axes['lightness']
@@ -456,6 +458,7 @@ class viscm_editor(object):
         ax_btn_props = plt.axes([0.81, 0.1, 0.1, 0.025])
         self.btn_props = Button(ax_btn_props, 'Properties')
         self.btn_props.on_clicked(self.show_viscm)
+        self.prop_windows = []
 
         axcolor = 'None'
         ax_jk_min = plt.axes([0.1, 0.1, 0.5, 0.03], axisbg=axcolor)
@@ -566,7 +569,7 @@ class viscm_editor(object):
         cm = LinearSegmentedColormap.from_list(
             'test_cm',
             self.cmap_model.get_sRGB(num=64)[0])
-        viscm(cm, name='test_cm', show_gamut=False)
+        self.prop_windows.append(viscm(cm, name='test_cm'))
         plt.show()
 
     def _jk_update(self, val):

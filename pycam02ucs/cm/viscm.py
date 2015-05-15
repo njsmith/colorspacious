@@ -172,10 +172,10 @@ def _vis_axes():
 
             'image0': grid[0:3, 2],
             'image0-cb': grid[0:3, 3],
-            'image1': grid[3:6, 2],
-            'image1-cb': grid[3:6, 3],
-            'image2': grid[6:9, 2],
-            'image2-cb': grid[6:9, 3],
+            'image1': grid[3:7, 2],
+            'image1-cb': grid[3:7, 3],
+            'image2': grid[7:, 2],
+            'image2-cb': grid[7:, 3],
     }
 
     axes = {key: plt.subplot(value) for (key, value) in axes.items()}
@@ -310,7 +310,7 @@ class viscm(object):
                            "vmin": 0})
 
         images.append(np.loadtxt(example_dir
-                                 + "st-helens_before-modified.txt.gz"))
+                                 + "st-helens_before-modified.txt.gz").T)
         image_args.append({})
 
         # Adapted from http://matplotlib.org/mpl_examples/images_contours_and_fields/pcolormesh_levels.py
@@ -536,15 +536,20 @@ class viscm_editor(object):
 
         cm_data = {array_list}
 
-        test_cm = LinearSegmentedColormap.from_list('test_cm', cm_data)
+        test_cm = LinearSegmentedColormap.from_list(__file__, cm_data)
 
 
         if __name__ == "__main__":
             import matplotlib.pyplot as plt
             import numpy as np
 
-            plt.imshow(np.linspace(0, 100, 256)[None, :], aspect='auto',
-                       cmap=test_cm)
+            try:
+                from pycam02ucs.cm.viscm import viscm
+                viscm(test_cm)
+            except ImportError:
+                print("pycam02ucs not found, falling back on simple display")
+                plt.imshow(np.linspace(0, 100, 256)[None, :], aspect='auto',
+                           cmap=test_cm)
             plt.show()
         ''')
 

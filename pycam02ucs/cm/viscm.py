@@ -291,6 +291,7 @@ class viscm(object):
         self.gamut_patch.set_edgecolor([0.2, 0.2, 0.2, 0.1])
         ax.add_collection3d(self.gamut_patch)
         self.gamut_patch.set_visible(show_gamut)
+        ax.view_init(elev=75, azim=-75)
 
         self.gamut_patch_toggle = Button(axes['gamut-toggle'], "Toggle gamut")
         def toggle(*args):

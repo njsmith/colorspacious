@@ -5,6 +5,7 @@
 # Simple script using CIECAM02 and CAM02-UCS to visualize properties of a
 # matplotlib colormap
 
+import sys
 import os.path
 
 import numpy as np
@@ -195,8 +196,8 @@ class viscm(object):
         if name is None:
             name = cm.name
 
-        fig = plt.figure()
-        fig.suptitle("Colormap evaluation: %s" % (name,), fontsize=24)
+        self.fig = plt.figure()
+        self.fig.suptitle("Colormap evaluation: %s" % (name,), fontsize=24)
         axes = _vis_axes()
 
         x = np.linspace(0, 1, N)
@@ -806,19 +807,77 @@ class WireframeView(object):
         self.ax.figure.canvas.draw()
 
 
-if __name__ == "__main__":
-    import sys
-    import os
+def main(argv):
+    import argparse
 
-    ns = {'__name__': ''}
+    # Usage:
+    #   python -m pycam02ucs.cm.viscm
+    #   python -m pycam02ucs.cm.viscm edit
+    #   python -m pycam02ucs.cm.viscm edit <file.py>
+    #      (file.py must define some appropriate globals)
+    #   python -m pycam02ucs.cm.viscm view <file.py>
+    #      (file.py must define a global named "test_cm")
+    #   python -m pycam02ucs.cm.viscm view "matplotlib builtin colormap"
+    #   python -m pycam02ucs.cm.viscm view --save=foo.png ...
 
-    if len(sys.argv) > 1:
-        cmap_params = sys.argv[1]
-        if os.path.isfile(cmap_params):
-            with open(cmap_params) as f:
-                code = compile(f.read(), cmap_params, 'exec')
+    parser = argparse.ArgumentParser(
+        prog="python -m {}".format(__file__),
+        description="A colormap tool.",
+    )
+    parser.add_argument("action", metavar="ACTION",
+                        help="'edit' or 'view'",
+                        choices=["edit", "view"],
+                        default="edit",
+                        nargs="?")
+    parser.add_argument("colormap", metavar="COLORMAP",
+                        default=None,
+                        help="A .py file saved from the editor, or "
+                             "the name of a matplotlib builtin colormap",
+                        nargs="?")
+    parser.add_argument("--save", metavar="FILE",
+                        default=None,
+                        help="Immediately save visualization to a file (view-mode only).")
+    parser.add_argument("--quit", default=False, action="store_true",
+                        help="Quit immediately after starting (useful with --save).")
+    args = parser.parse_args(argv)
+
+    params = {}
+    cmap = None
+    if args.colormap:
+        if os.path.isfile(args.colormap):
+            ns = {'__name__': '',
+                  '__file__': os.path.basename(args.colormap),
+            }
+
+            with open(args.colormap) as f:
+                code = compile(f.read(),
+                               os.path.basename(args.colormap),
+                               'exec')
                 exec(code, globals(), ns)
 
-    params = ns.get('parameters', {})
-    viscm_editor(**params)
+            params = ns.get('parameters', {})
+            cmap = ns.get("test_cm", None)
+        else:
+            cmap = plt.get_cmap(args.colormap)
+
+    if args.action == "view":
+        if cmap is None:
+            sys.exit("Please specify a colormap")
+        v = viscm(cmap)
+        if args.save is not None:
+            v.fig.set_size_inches(20, 12)
+            v.fig.savefig(args.save)
+    elif args.action == "edit":
+        if params is None:
+            sys.exit("Sorry, I don't know how to edit the specified colormap")
+        viscm_editor(**params)
+    else:
+        raise RuntimeError("can't happen")
+
+    if args.quit:
+        sys.exit()
+
     plt.show()
+
+if __name__ == "__main__":
+    main(sys.argv[1:])

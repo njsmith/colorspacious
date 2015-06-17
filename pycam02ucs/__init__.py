@@ -4,4 +4,8 @@
 
 from .ciecam02 import *
 
-from .cam02ucs import deltaEp_sRGB
+from .cam02 import CAM02
+
+from .conversion import convert_cspace
+
+from .deltaEp import deltaEp

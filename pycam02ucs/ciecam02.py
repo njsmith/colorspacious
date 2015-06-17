@@ -11,6 +11,7 @@ import numpy as np
 # These all get re-exported at the package level
 __all__ = [
     "Illuminant", "Surround", "ViewingConditions", "NegativeAError",
+    "JChQMsH",
 ]
 
 class Illuminant(object):
@@ -112,6 +113,11 @@ class ViewingConditions(object):
         self.D = np.clip(self.D, 0, 1)
 
         self.D_RGB = self.D * self.XYZ_w[1] / self.RGB_w + 1 - self.D
+        # Fairchild (2013), pages 290-292, recommends using this equation
+        # instead, though notes that it doesn't make much difference as part
+        # of a full CIECAM02 system. (It matters more if you're only using
+        # pieces.)
+        #self.D_RGB = self.D * 100 / self.RGB_w + 1 - self.D
         self.k = 1 / (5 * self.L_A + 1)
         self.F_L = (0.2 * self.k ** 4 * (5 * self.L_A)
                     + 0.1 * (1 - self.k**4)**2 * (5 * self.L_A) ** (1./3))
@@ -452,72 +458,14 @@ def check_roundtrip(vc, XYZ):
                 assert np.allclose(got, XYZ)
 
 def test_gold():
-    TestVec = namedtuple("TestVec",
-                         ["XYZ", "XYZ_w", "L_A", "Y_b", "F", "c", "N_c",
-                          "expected"])
+    from .gold_values import XYZ_CIECAM02_gold
 
-    gold = [
-        # Gold values from
-        #   https://github.com/igd-geo/pcolor/blob/master/de.fhg.igd.pcolor.test/src/de/fhg/igd/pcolor/test/CAMWorkedExample.java
-        # apparently taken from CIE 159:2004 Section 9
-        TestVec(XYZ=[19.31, 23.93, 10.14],
-                XYZ_w=[98.88, 90, 32.03],
-                L_A=200,
-                Y_b=18,
-                F=1.0,
-                c=0.69,
-                N_c=1.0,
-                expected=JChQMsH(h=191.0452, J=48.0314, Q=183.1240,
-                                 s=46.0177, C=38.7789, M=38.7789,
-                                 H=240.8885)),
-        TestVec(XYZ=[19.31, 23.93, 10.14],
-                XYZ_w=[98.88, 90, 32.03],
-                L_A=20, # <- different from above
-                Y_b=18,
-                F=1.0,
-                c=0.69,
-                N_c=1.0,
-                expected=JChQMsH(h=185.3445, J=47.6856, Q=113.8401,
-                                 s=51.1275, C=36.0527, M=29.7580,
-                                 H=232.6630)),
-        # gold values from Mark Fairchild's spreadsheet at
-        #   http://rit-mcsl.org/fairchild//files/AppModEx.xls
-        TestVec(XYZ=[19.01, 20.00, 21.78],
-                XYZ_w=[95.05, 100.0, 108.88],
-                Y_b=20.0,
-                L_A=318.30988618379,
-                F=1.0,
-                c=0.69,
-                N_c=1.0,
-                expected=JChQMsH(h=219.04841, J=41.73109, Q=195.37131,
-                                 s=2.36031, C=0.10471, M=0.10884,
-                                 H=278.06070)),
-        TestVec(XYZ=[57.06, 43.06, 31.96],
-                XYZ_w=[95.05, 100.0, 108.88],
-                L_A=31.830988618379,
-                Y_b=20.0,
-                F=1.0,
-                c=0.69,
-                N_c=1.0,
-                expected=JChQMsH(h=19.55739, J=65.95523, Q=152.67220,
-                                 s=52.24549, C=48.57050, M=41.67327,
-                                 # This value is based on the corrected
-                                 # version of the spreadsheet that I sent Mark
-                                 # Fairchild on 2014-07-15... the original
-                                 # spreadsheet had it wrong, so if comparing
-                                 # be careful about which version you have!
-                                 H=399.38837,
-                             )),
-        ]
-
-    for t in gold:
-        vc = ViewingConditions(t.XYZ_w, t.Y_b, t.L_A,
-                               Surround(F=t.F, c=t.c, N_c=t.N_c))
-        got = vc.XYZ_to_CIECAM02(t.XYZ)
+    for t in XYZ_CIECAM02_gold:
+        got = t.vc.XYZ_to_CIECAM02(t.XYZ)
         for i in range(len(got)):
             if t.expected[i] is not None:
                 assert np.allclose(got[i], t.expected[i], atol=1e-05)
-        check_roundtrip(vc, t.XYZ)
+        check_roundtrip(t.vc, t.XYZ)
 
 def test_inverse():
     r = np.random.RandomState(0)

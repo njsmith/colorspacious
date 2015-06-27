@@ -36,6 +36,10 @@ Code and bug tracker:
 Contact:
   Nathaniel J. Smith <njs@pobox.com>
 
+Dependencies:
+  * Python 2.6+, or 3.3+
+  * NumPy
+
 Developer dependencies (only needed for hacking on source):
   * nose: needed to run tests
 
@@ -48,3 +52,16 @@ like to consider:
   * ``colormath``: http://python-colormath.readthedocs.org/
   * ``ciecam02``: https://pypi.python.org/pypi/ciecam02/
   * ``ColorPy``: http://markkness.net/colorpy/ColorPy.html
+
+
+
+
+todo: XYZ1 vs XYZ100? ditto for sRGB1 vs sRGB256?
++ tons of search replace for all the variable names
+
+similarly fix naming for J'a'b' or JKapbp or whatever
+
+add colorblindness simulation
+add CIELCh, J'a'b'?
+
+clean up viscm

@@ -47,9 +47,9 @@ class LuoEtAl2006UniformSpace(object):
         M = (np.exp(self.c2*Mp) - 1) / self.c2
         return np.array([J, M, h]).T
 
-CAM02_UCS = LuoEtAl2006UniformSpace(1.00, 0.007, 0.0228)
-CAM02_LCD = LuoEtAl2006UniformSpace(1.24, 0.007, 0.0363)
-CAM02_SCD = LuoEtAl2006UniformSpace(0.77, 0.007, 0.0053)
+CAM02UCS = LuoEtAl2006UniformSpace(1.00, 0.007, 0.0228)
+CAM02LCD = LuoEtAl2006UniformSpace(1.24, 0.007, 0.0363)
+CAM02SCD = LuoEtAl2006UniformSpace(0.77, 0.007, 0.0053)
 
 
 ########## Similarity functions   ################

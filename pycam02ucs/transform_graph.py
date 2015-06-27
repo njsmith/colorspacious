@@ -505,7 +505,7 @@ def transform_kwargs(start_concrete_node, end_concrete_node):
                 kwargs[k] = v
     return kwargs
 
-def transform_kwargs():
+def test_transform_kwargs():
     from nose.tools import assert_raises
 
     assert_(transform_kwargs({"name": "start"}, {"name": "end"}) == {})
@@ -623,7 +623,7 @@ class TransformGraph(object):
         start_name = start["name"]
         end_name = end["name"]
         best_path = None
-        for _, path in self._shortest_paths[(start_name, end_name)].values():
+        for path in self._shortest_paths[(start_name, end_name)]:
             if path_matches(path, start, end):
                 if best_path is None or len(best_path.path) > len(path.path):
                     best_path = path
@@ -631,13 +631,13 @@ class TransformGraph(object):
             raise ValueError("No path found from %r -> %r" % (start, end))
         concrete_nodes = []
         for path_node in best_path.nodes:
-            concrete_nodes.append(concretize_path_node(node), start, end)
+            concrete_nodes.append(concretize_path_node(path_node, start, end))
         kwargses = []
         for i in range(len(concrete_nodes) - 1):
             kwargs = transform_kwargs(concrete_nodes[i],
                                       concrete_nodes[i + 1])
             kwargses.append(kwargs)
-        return Transform(concrete_nodes, transforms, kwargses)
+        return Transform(concrete_nodes, path.transforms, kwargses)
 
     def dump_dot(self, f): # pragma: no cover
         f.write("digraph {\n")
@@ -645,7 +645,9 @@ class TransformGraph(object):
             # Laziness: assumes names don't need more quoting
             attr_names = set(node)
             attr_names.remove("name")
-            html = "<b>%s</b>(%s)" % (node["name"], ", ".join(attr_names))
+            html = "<b>%s</b>" % (node["name"],)
+            for attr_name in sorted(attr_names):
+                html += "<br/>  <i>%s</i>" % (attr_name,)
             f.write("  \"%s\" [ label=<%s> ]\n" % (node["name"], html))
         for edge in self._edges:
             # FIXME: label edges with attribute information

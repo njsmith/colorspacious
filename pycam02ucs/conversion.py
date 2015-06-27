@@ -12,156 +12,50 @@ from .basics import (sRGB_to_sRGB_linear, sRGB_linear_to_sRGB,
                      XYZ_to_CIELAB, CIELAB_to_XYZ)
 
 from .ciecam02 import ViewingConditions
-from .cam02ucs import (LuoEtAl2006UniformSpace,
-                       CAM02_UCS, CAM02_LCD, CAM02_SCD)
+from .luoetal2006 import (LuoEtAl2006UniformSpace,
+                          CAM02UCS, CAM02LCD, CAM02SCD)
+
+from .transform_graph import Edge, MATCH, ANY, TransformGraph
+
+__all__ = ["cspace_converter", "convert_cspace"]
 
 ################################################################
 
-class _PathKeeper(object):
-    def __init__(self):
-        # maps (source, target) : data
-        self._edges = {}
-        # maps (source, target) : [source, intermediate node 1, ..., target]
-        self._paths = {}
-        # {source: all nodes reachable from source}
-        self._forward_reachable = defaultdict(set)
-        # {target: all nodes that can reach target}
-        self._backward_reachable = defaultdict(set)
+EDGES = []
 
-    def add_connection(self, source, target, data):
-        assert (source, target) not in self._edges
-        self._edges[(source, target)] = data
-        #print("Adding %s -> %s: %s" % (source, target, data))
-        queue = [(source, target, [source, target])]
-        while queue:
-            #print("  To process: %s" % (queue,))
-            source, target, path = queue.pop()
-            old_path = self._paths.get((source, target))
-            if old_path is None or len(path) < len(old_path):
-                #print("    %s -> %s: %s beats %s"
-                #      % (source, target, path, old_path))
-                self._paths[(source, target)] = path
-                self._forward_reachable[source].add(target)
-                self._backward_reachable[target].add(source)
-                for new_target in self._forward_reachable[target]:
-                    queue.append(
-                        (source, new_target,
-                         path[:-1] + self._paths[(target, new_target)])
-                    )
-                for new_source in self._backward_reachable[source]:
-                    queue.append(
-                        (new_source, target,
-                         self._paths[(new_source, source)][:-1] + path)
-                    )
-        #print("--- Done ---\n")
+def pair(a, b, a2b, b2a):
+    if isinstance(a, str):
+        a = {"name": a}
+    if isinstance(b, str):
+        b = {"name": b}
+    return [Edge(a, b, a2b), Edge(b, a, b2a)]
 
-    def get_path(self, source, target):
-        "Returns (nodes, edges)"
-        nodes = self._paths.get((source, target))
-        if nodes is None:
-            raise ValueError("No path found from %r -> %r" % (source, target))
-        edges = []
-        for i in range(len(nodes) - 1):
-            edges.append(self._edges[(nodes[i], nodes[i + 1])])
-        return nodes, edges
+EDGES += pair("sRGB", "sRGB-linear", sRGB_to_sRGB_linear, sRGB_linear_to_sRGB)
 
-    def _dump_dot(self, f):  # pragma: no cover
-        f.write("digraph {\n")
-        # Hack: technically this class isn't supposed to know about colors,
-        # but the layout looks much nicer if we mention sRGB first so it goes
-        # on top...
-        if "sRGB" in self._forward_reachable:
-            f.write("sRGB\n")
-        for (source, target), data in self._edges.items():
-            f.write("\"%s\" -> \"%s\"\n" % (source, target))
-        f.write("}\n")
+EDGES += pair("sRGB-linear", "XYZ", sRGB_linear_to_XYZ, XYZ_to_sRGB_linear)
 
-def test__PathKeeper():
-    from nose.tools import assert_raises
+EDGES += pair("XYZ", "xyY", XYZ_to_xyY, xyY_to_XYZ)
 
-    pk = _PathKeeper()
-    assert_raises(ValueError, pk.get_path, "a", "b")
-
-    pk.add_connection("a", "b", 1)
-    assert pk.get_path("a", "b") == (["a", "b"], [1])
-
-    pk.add_connection("b", "c", 2)
-    assert pk.get_path("b", "c") == (["b", "c"], [2])
-    assert pk.get_path("a", "c") == (["a", "b", "c"], [1, 2])
-
-    pk.add_connection("y", "z", 25)
-    pk.add_connection("z", "a", 26)
-    assert pk.get_path("y", "c") == (["y", "z", "a", "b", "c"],
-                                     [25, 26, 1, 2])
-
-    pk.add_connection("y", "a", "shortcut")
-    assert pk.get_path("y", "a") == (["y", "a"], ["shortcut"])
-    assert pk.get_path("y", "c") == (["y", "a", "b", "c"], ["shortcut", 1, 2])
-
-    # No automatic self-connections
-    assert_raises(ValueError, pk.get_path, "a", "a")
-    pk.add_connection("a", "a", "null")
-    assert pk.get_path("a", "a") == (["a", "a"], ["null"])
-    # We don't end up with ["null", 1] or anything
-    assert pk.get_path("a", "b") == (["a", "b"], [1])
-    # Even for paths added afterwards
-    pk.add_connection("q", "a", "new")
-    assert pk.get_path("q", "a") == (["q", "a"], ["new"])
-    assert pk.get_path("q", "b") == (["q", "a", "b"], ["new", 1])
-
-################################################################
-
-_CONVERT_PATHS = _PathKeeper()
-
-def _identity3d(x):
-    x = np.asarray(x, dtype=float)
-    if x.shape[-1] != 3:
-        raise ValueError("Expected array with shape (..., 3)")
-    return x
-
-_CONVERT_PATHS.add_connection("XYZ", "XYZ", _identity3d)
-
-_CONVERT_PATHS.add_connection("sRGB", "sRGB", _identity3d)
-_CONVERT_PATHS.add_connection("sRGB", "sRGB-linear", sRGB_to_sRGB_linear)
-_CONVERT_PATHS.add_connection("sRGB-linear", "sRGB", sRGB_linear_to_sRGB)
-
-_CONVERT_PATHS.add_connection("sRGB-linear", "sRGB-linear", _identity3d)
-_CONVERT_PATHS.add_connection("sRGB-linear", "XYZ", sRGB_linear_to_XYZ)
-_CONVERT_PATHS.add_connection("XYZ", "sRGB-linear", XYZ_to_sRGB_linear)
-
-_CONVERT_PATHS.add_connection("xyY", "xyY", _identity3d)
-_CONVERT_PATHS.add_connection("XYZ", "xyY", XYZ_to_xyY)
-_CONVERT_PATHS.add_connection("xyY", "XYZ", xyY_to_XYZ)
-
-_CONVERT_PATHS.add_connection("CIELAB", "CIELAB", _identity3d)
-_CONVERT_PATHS.add_connection("XYZ", "CIELAB", XYZ_to_CIELAB)
-_CONVERT_PATHS.add_connection("CIELAB", "XYZ", CIELAB_to_XYZ)
+EDGES += pair("XYZ", {"name": "CIELAB", "XYZ_w": ANY},
+              CIELAB_to_XYZ, XYZ_to_CIELAB)
 
 # XX: CIELCh
 # and J'/K M' h'
+
+def _XYZ_to_CIECAM02(XYZ, viewing_conditions):
+    return viewing_conditions.XYZ_to_CIECAM02(XYZ)
 
 def _CIECAM02_to_XYZ(CIECAM02, viewing_conditions):
     return viewing_conditions.CIECAM02_to_XYZ(J=CIECAM02.J,
                                               C=CIECAM02.C,
                                               h=CIECAM02.h)
 
-def _XYZ_to_CIECAM02(XYZ, viewing_conditions):
-    return viewing_conditions.XYZ_to_CIECAM02(XYZ)
-
-_CONVERT_PATHS.add_connection("CIECAM02", "CIECAM02", lambda x: x)
-_CONVERT_PATHS.add_connection("XYZ", "CIECAM02", _XYZ_to_CIECAM02)
-_CONVERT_PATHS.add_connection("CIECAM02", "XYZ", _CIECAM02_to_XYZ)
+EDGES += pair("XYZ", {"name": "CIECAM02", "viewing_conditions": ANY},
+              _XYZ_to_CIECAM02, _CIECAM02_to_XYZ)
 
 _CIECAM02_axes = set("JChQMsH")
 
-class _Tag(object):
-    def __init__(self, name):
-        self._name = name
-    def __repr__(self):
-        return self._name
-_CIECAM02_partial_tag = _Tag("(CIECAM02 subsets)")
-
-def _CIECAM02_to_CIECAM02_partial(CIECAM02, axes):
+def _CIECAM02_to_CIECAM02_partial(CIECAM02, viewing_conditions, axes):
     pieces = []
     for axis in axes:
         pieces.append(getattr(CIECAM02, axis)[..., np.newaxis])
@@ -178,94 +72,86 @@ def _CIECAM02_partial_to_XYZ(partial, viewing_conditions, axes):
         kwargs[coord] = partial[..., i]
     return viewing_conditions.CIECAM02_to_XYZ(**kwargs)
 
-# We do *not* provide any CIECAM02-partial <-> CIECAM02-partial converter
+# We do *not* provide any CIECAM02-subset <-> CIECAM02-subset converter
 # This will be implicitly created by going
-#   CIECAM02-partial -> XYZ -> CIECAM02 -> CIECAM02-partial
+#   CIECAM02-subset -> XYZ -> CIECAM02 -> CIECAM02-subset
 # which is the correct way to do it.
-_CONVERT_PATHS.add_connection("CIECAM02", _CIECAM02_partial_tag,
-                              _CIECAM02_to_CIECAM02_partial)
-_CONVERT_PATHS.add_connection(_CIECAM02_partial_tag, "XYZ",
-                              _CIECAM02_partial_to_XYZ)
+EDGES += [
+    Edge({"name": "CIECAM02",
+          "viewing_conditions": MATCH},
+         {"name": "CIECAM02-subset",
+          "viewing_conditions": MATCH, "axes": ANY},
+         _CIECAM02_to_CIECAM02_partial),
+    Edge({"name": "CIECAM02-subset",
+          "viewing_conditions": ANY, "axes": ANY},
+         {"name": "XYZ"},
+         _CIECAM02_partial_to_XYZ),
+    ]
 
-# Special case to give CAM02-UCS and friends a route
-def _JMh_to_XYZ(JMh, viewing_conditions):
-    return viewing_conditions.CIECAM02_to_XYZ(J=JMh[..., 0],
-                                              M=JMh[..., 1],
-                                              h=JMh[..., 2])
+def _JMh_to_LuoEtAl2006(JMh, viewing_conditions, luoetal2006_space, axes):
+    return luoetal2006_space.JMh_to_JKapbp(JMh)
 
-def _CIECAM02_to_JMh(CIECAM02):
-    return _CIECAM02_to_CIECAM02_partial(CIECAM02, "JMh")
+def _LuoEtAl2006_to_JMh(JKapbp, viewing_conditions, luoetal2006_space, axes):
+    return luoetal2006_space.JKapbp_to_JMh(CAM02)
 
-_CONVERT_PATHS.add_connection("JMh", "JMh", _identity3d)
-_CONVERT_PATHS.add_connection("JMh", "XYZ", _JMh_to_XYZ)
-_CONVERT_PATHS.add_connection("CIECAM02", "JMh", _CIECAM02_to_JMh)
+EDGES += pair({"name": "CIECAM02-subset",
+                 "viewing_conditions": MATCH,
+                 "axes": "JMh"},
+              {"name": "J'a'b'",
+                 "viewing_conditions": MATCH,
+                 "luoetal2006_space": ANY},
+              _JMh_to_LuoEtAl2006, _LuoEtAl2006_to_JMh)
 
-def _LuoEtAl2006_to_JMh(JKapbp, uniform_space):
-    return uniform_space.JKapbp_to_JMh(CAM02)
+GRAPH = TransformGraph(EDGES)
 
-def _JMh_to_LuoEtAl2006(JMh, uniform_space):
-    return uniform_space.JMh_to_JKapbp(JMh)
-
-_LuoEtAl2006_tag = _Tag("(CAM02-UCS-like spaces)")
-
-_CONVERT_PATHS.add_connection("JMh", _LuoEtAl2006_tag, _JMh_to_LuoEtAl2006)
-_CONVERT_PATHS.add_connection(_LuoEtAl2006_tag, "JMh", _LuoEtAl2006_to_JMh)
-
-def _tag_for_space(space):
-    # We could use _CIECAM02_partial_tag for JMh as well, but it would make
-    # explicit convert_cspace(..., "JMh", "JKapbp") pointlessly inefficient --
-    # we'd end up going
-    #   JMh (as partial) -> XYZ -> CIECAM02 -> JMh (as builtin hack) -> JKapbp
-    if _CIECAM02_axes.issuperset(space) and space != "JMh":
-        return _CIECAM02_partial_tag
-    elif isinstance(space, LuoEtAlUniformSpace):
-        return _LuoEtAl2006_tag
-    else:
-        return space
-
-_ALIASES = {
-    "CAM02-UCS": CAM02_UCS,
-    "CAM02-LCD": CAM02_LCD,
-    "CAM02-SCD": CAM02_SCD,
+ALIASES = {
+    "CAM02-UCS": CAM02UCS,
+    "CAM02-LCD": CAM02LCD,
+    "CAM02-SCD": CAM02SCD,
+    "CIECAM02": ViewingConditions.sRGB,
+    "CIELAB": {"name": "CIELAB", "XYZ_w": ViewingConditions.sRGB.XYZ_w},
 }
 
-def convert_cspace(arr, start, end,
-                   viewing_conditions=ViewingConditions.sRGB):
-    start = _ALIASES.get(start, start)
-    end = _ALIASES.get(end, end)
-
-    start_tag = _tag_for_space(start)
-    end_tag = _tag_for_space(end)
-
-    nodes, converters = _CONVERT_PATHS.get_path(start_tag, end_tag)
-    current = arr
-    for i, converter in enumerate(converters):
-        if converter in (XYZ_to_CIELAB, CIELAB_to_XYZ):
-            current = converter(current, XYZ_w=viewing_conditions.XYZ_w)
-        elif converter in (_CIECAM02_to_XYZ, _XYZ_to_CIECAM02, _JMh_to_XYZ):
-            current = converter(current,
-                                viewing_conditions=viewing_conditions)
-        elif converter is _CIECAM02_to_CIECAM02_partial:
-            # Our conversion graph is set up so that the CIECAM02 partial
-            # conversions are a dead-end -- you never pass through them on the
-            # way to anywhere else, only if you are starting and/or ending
-            # there. This lets us recover the actual requested axes.
-            assert i == len(converters) - 1
-            current = converter(current, axes=end)
-        elif converter is _CIECAM02_partial_to_XYZ:
-            assert i == 0
-            axes = start
-            current = converter(current,
-                                viewing_conditions=viewing_conditions,
-                                axes=axes)
-        elif converter is _LuoEtAl2006_to_JMh:
-            current = converter(current, start)
-        elif converter is _JMh_to_LuoEtAl2006:
-            current = converter(current, end)
+def norm_cspace_id(cspace):
+    cspace = ALIASES.get(cspace, cspace)
+    if isinstance(cspace, str):
+        if _CIECAM02_axes.issuperset(cspace):
+            return {"name": "CIECAM02-subset",
+                    "viewing_conditions": ViewingConditions.sRGB,
+                    "axes": cspace}
         else:
-            current = converter(current)
+            return {"name": cspace}
+    elif isinstance(cspace, ViewingConditions):
+        return {"name": "CIECAM02",
+                "viewing_conditions": cspace}
+    elif isinstance(cspace, LuoEtAl2006UniformSpace):
+        return {"name": "J'a'b'",
+                "viewing_conditions": ViewingConditions.sRGB,
+                "luoetal2006_space": cspace}
+    elif isinstance(cspace, dict):
+        if cspace["name"] in ALIASES:
+            base = ALIASES[cspace["name"]]
+            if isinstance(base, dict) and base["name"] == name:
+                # avoid infinite recursion
+                return cspace
+            else:
+                base = norm_cspace_id(base)
+                base = dict(base)
+                del cspace["name"]
+                base.update(cspace)
+                return base
+        return cspace
+    else:
+        raise ValueError("unrecognized color space %r" % (cspace,))
 
-    return current
+def cspace_converter(start, end):
+    start = norm_cspace_id(start)
+    end = norm_cspace_id(end)
+    return GRAPH.get_transform(start, end)
+
+def convert_cspace(arr, start, end):
+    converter = cspace_converter(start, end)
+    return converter(arr)
 
 def test_convert_cspace_long_paths():
     from .gold_values import sRGB_xyY_gold

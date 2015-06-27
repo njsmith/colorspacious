@@ -5,7 +5,7 @@ import numpy as np
 
 from .ciecam02 import ViewingConditions
 
-class CAM02(object):
+class LuoEtAl2006UniformSpace(object):
     def __init__(self, KL, c1, c2):
         self.KL = KL
         self.c1 = c1
@@ -47,9 +47,9 @@ class CAM02(object):
         M = (np.exp(self.c2*Mp) - 1) / self.c2
         return np.array([J, M, h]).T
 
-CAM02.UCS = CAM02(1.00, 0.007, 0.0228)
-CAM02.LCD = CAM02(1.24, 0.007, 0.0363)
-CAM02.SCD = CAM02(0.77, 0.007, 0.0053)
+CAM02_UCS = LuoEtAl2006UniformSpace(1.00, 0.007, 0.0228)
+CAM02_LCD = LuoEtAl2006UniformSpace(1.24, 0.007, 0.0363)
+CAM02_SCD = LuoEtAl2006UniformSpace(0.77, 0.007, 0.0053)
 
 
 ########## Similarity functions   ################

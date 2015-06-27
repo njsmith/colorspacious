@@ -3,11 +3,11 @@
 # See file LICENSE.txt for license information.
 
 from .convert import convert
-from .cam02 import CAM02
+from .cam02ucs import CAM02_UCS
 from .ciecam02 import ViewingConditions
 
 def deltaEp(color1, color2,
-            source_space="sRGB", cam02=CAM02.UCS,
+            source_space="sRGB", uniform_space=CAM02_UCS,
             viewing_conditions=ViewingConditions.sRGB):
     """Computes the :math:`\delta E'` distance between pairs of colors.
 

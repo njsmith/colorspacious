@@ -4,7 +4,7 @@
 
 from .ciecam02 import *
 
-from .cam02 import CAM02
+from .cam02ucs import LuoEtAl2006UniformSpace, CAM02_UCS, CAM02_SCD, CAM02_LCD
 
 from .conversion import convert_cspace
 

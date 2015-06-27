@@ -34,10 +34,17 @@ Code and bug tracker:
   https://github.com/njsmith/pycam02ucs
 
 Contact:
-  Nathaniel J. Smith <nathaniel.smith@ed.ac.uk>
+  Nathaniel J. Smith <njs@pobox.com>
 
 Developer dependencies (only needed for hacking on source):
   * nose: needed to run tests
 
 License:
   MIT, see LICENSE.txt for details.
+
+Other Python packages with similar functionality that you might also
+like to consider:
+  * ``colour``: http://colour-science.org/
+  * ``colormath``: http://python-colormath.readthedocs.org/
+  * ``ciecam02``: https://pypi.python.org/pypi/ciecam02/
+  * ``ColorPy``: http://markkness.net/colorpy/ColorPy.html

@@ -12,7 +12,8 @@ from .basics import (sRGB_to_sRGB_linear, sRGB_linear_to_sRGB,
                      XYZ_to_CIELAB, CIELAB_to_XYZ)
 
 from .ciecam02 import ViewingConditions
-from .cam02 import CAM02
+from .cam02ucs import (LuoEtAl2006UniformSpace,
+                       CAM02_UCS, CAM02_LCD, CAM02_SCD)
 
 ################################################################
 
@@ -66,6 +67,11 @@ class _PathKeeper(object):
 
     def _dump_dot(self, f):  # pragma: no cover
         f.write("digraph {\n")
+        # Hack: technically this class isn't supposed to know about colors,
+        # but the layout looks much nicer if we mention sRGB first so it goes
+        # on top...
+        if "sRGB" in self._forward_reachable:
+            f.write("sRGB\n")
         for (source, target), data in self._edges.items():
             f.write("\"%s\" -> \"%s\"\n" % (source, target))
         f.write("}\n")
@@ -116,12 +122,12 @@ def _identity3d(x):
 _CONVERT_PATHS.add_connection("XYZ", "XYZ", _identity3d)
 
 _CONVERT_PATHS.add_connection("sRGB", "sRGB", _identity3d)
-_CONVERT_PATHS.add_connection("sRGB", "sRGB_linear", sRGB_to_sRGB_linear)
-_CONVERT_PATHS.add_connection("sRGB_linear", "sRGB", sRGB_linear_to_sRGB)
+_CONVERT_PATHS.add_connection("sRGB", "sRGB-linear", sRGB_to_sRGB_linear)
+_CONVERT_PATHS.add_connection("sRGB-linear", "sRGB", sRGB_linear_to_sRGB)
 
-_CONVERT_PATHS.add_connection("sRGB_linear", "sRGB_linear", _identity3d)
-_CONVERT_PATHS.add_connection("sRGB_linear", "XYZ", sRGB_linear_to_XYZ)
-_CONVERT_PATHS.add_connection("XYZ", "sRGB_linear", XYZ_to_sRGB_linear)
+_CONVERT_PATHS.add_connection("sRGB-linear", "sRGB-linear", _identity3d)
+_CONVERT_PATHS.add_connection("sRGB-linear", "XYZ", sRGB_linear_to_XYZ)
+_CONVERT_PATHS.add_connection("XYZ", "sRGB-linear", XYZ_to_sRGB_linear)
 
 _CONVERT_PATHS.add_connection("xyY", "xyY", _identity3d)
 _CONVERT_PATHS.add_connection("XYZ", "xyY", XYZ_to_xyY)
@@ -153,7 +159,7 @@ class _Tag(object):
         self._name = name
     def __repr__(self):
         return self._name
-_CIECAM02_partial_tag = _Tag("_CIECAM02_partial_tag")
+_CIECAM02_partial_tag = _Tag("(CIECAM02 subsets)")
 
 def _CIECAM02_to_CIECAM02_partial(CIECAM02, axes):
     pieces = []
@@ -181,7 +187,7 @@ _CONVERT_PATHS.add_connection("CIECAM02", _CIECAM02_partial_tag,
 _CONVERT_PATHS.add_connection(_CIECAM02_partial_tag, "XYZ",
                               _CIECAM02_partial_to_XYZ)
 
-# Special case to give CAM02 a route
+# Special case to give CAM02-UCS and friends a route
 def _JMh_to_XYZ(JMh, viewing_conditions):
     return viewing_conditions.CIECAM02_to_XYZ(J=JMh[..., 0],
                                               M=JMh[..., 1],
@@ -194,15 +200,16 @@ _CONVERT_PATHS.add_connection("JMh", "JMh", _identity3d)
 _CONVERT_PATHS.add_connection("JMh", "XYZ", _JMh_to_XYZ)
 _CONVERT_PATHS.add_connection("CIECAM02", "JMh", _CIECAM02_to_JMh)
 
-def _CAM02_to_JMh(CAM02, cam02):
-    return cam02.JKapbp_to_JMh(CAM02)
+def _LuoEtAl2006_to_JMh(JKapbp, uniform_space):
+    return uniform_space.JKapbp_to_JMh(CAM02)
 
-def _JMh_to_CAM02(JMh, cam02):
-    return cam02.JMh_to_JKapbp(JMh)
+def _JMh_to_LuoEtAl2006(JMh, uniform_space):
+    return uniform_space.JMh_to_JKapbp(JMh)
 
-_CONVERT_PATHS.add_connection("JKapbp", "JKapbp", _identity3d)
-_CONVERT_PATHS.add_connection("JMh", "JKapbp", _JMh_to_CAM02)
-_CONVERT_PATHS.add_connection("JKapbp", "JMh", _CAM02_to_JMh)
+_LuoEtAl2006_tag = _Tag("(CAM02-UCS-like spaces)")
+
+_CONVERT_PATHS.add_connection("JMh", _LuoEtAl2006_tag, _JMh_to_LuoEtAl2006)
+_CONVERT_PATHS.add_connection(_LuoEtAl2006_tag, "JMh", _LuoEtAl2006_to_JMh)
 
 def _tag_for_space(space):
     # We could use _CIECAM02_partial_tag for JMh as well, but it would make
@@ -211,12 +218,22 @@ def _tag_for_space(space):
     #   JMh (as partial) -> XYZ -> CIECAM02 -> JMh (as builtin hack) -> JKapbp
     if _CIECAM02_axes.issuperset(space) and space != "JMh":
         return _CIECAM02_partial_tag
+    elif isinstance(space, LuoEtAlUniformSpace):
+        return _LuoEtAl2006_tag
     else:
         return space
 
+_ALIASES = {
+    "CAM02-UCS": CAM02_UCS,
+    "CAM02-LCD": CAM02_LCD,
+    "CAM02-SCD": CAM02_SCD,
+}
+
 def convert_cspace(arr, start, end,
-                   viewing_conditions=ViewingConditions.sRGB,
-                   cam02=CAM02.UCS):
+                   viewing_conditions=ViewingConditions.sRGB):
+    start = _ALIASES.get(start, start)
+    end = _ALIASES.get(end, end)
+
     start_tag = _tag_for_space(start)
     end_tag = _tag_for_space(end)
 
@@ -241,6 +258,10 @@ def convert_cspace(arr, start, end,
             current = converter(current,
                                 viewing_conditions=viewing_conditions,
                                 axes=axes)
+        elif converter is _LuoEtAl2006_to_JMh:
+            current = converter(current, start)
+        elif converter is _JMh_to_LuoEtAl2006:
+            current = converter(current, end)
         else:
             current = converter(current)
 

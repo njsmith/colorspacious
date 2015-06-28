@@ -8,7 +8,7 @@ __all__ = ["standard_illuminant_XYZ100", "as_XYZ100_w"]
 
 # The "standard" 2 degree observer (CIE 1931)
 # Sourced from http://www.easyrgb.com/index.php?X=MATH&H=15
-standard = {
+cie1931 = {
     "A":   [109.850, 100,  35.585],
     "C":   [ 98.074, 100, 118.232],
     "D50": [ 96.422, 100,  82.521],
@@ -20,7 +20,7 @@ standard = {
 
 # The "supplementary" 10 degree observer (CIE 1964)
 # Sourced from http://www.easyrgb.com/index.php?X=MATH&H=15
-supplementary = {
+cie1964 = {
     "A":   [111.144, 100,  35.200],
     "C":   [ 97.285, 100, 116.145],
     "D50": [ 96.720, 100,  81.427],
@@ -41,7 +41,7 @@ supplementary = {
 # than 4 degrees, use of the CIE 1964 supplementary standard colorimetric
 # observer is recommended." (page 82, when discussing CIE94 delta-E)
 
-def standard_illuminant_XYZ100(name, observer="standard"):
+def standard_illuminant_XYZ100(name, observer="CIE 1931 2 deg"):
     """Takes a string naming a standard illuminant, and returns its XYZ
     coordinates (normalized to Y = 100).
 
@@ -61,22 +61,23 @@ def standard_illuminant_XYZ100(name, observer="standard"):
     colorimetric calculations requiring representative daylight, unless there
     are specific reasons for using a different illuminant".
 
-    By default, we return points in the "standard" (2 degree observer, CIE
-    1931) XYZ space. By specifying ``observer="supplementary"``, you can
-    instead get the whitepoint coordinates in the "supplementary" (10 degree
-    observer, CIE 1964) XYZ space. This is only useful if the XYZ points you
-    want to do calculations on were somehow measured using the supplementary
-    color matching functions, perhaps via a spectrophotometer; consumer
-    equipment uses the "standard" observer.
+    By default, we return points in the XYZ space defined by the CIE 1931 2
+    degree standard observer. By specifying ``observer="CIE 1964 10 deg"``,
+    you can instead get the whitepoint coordinates in XYZ space defined by the
+    CIE 1964 10 degree observer. This is probably only useful if you have XYZ
+    points you want to do calculations on that were somehow measured using the
+    CIE 1964 color matching functions, perhaps via a spectrophotometer;
+    consumer equipment (monitors, cameras, etc.) assumes the use of the CIE
+    1931 standard observer in all cases I know of.
 
     """
-    if observer == "standard":
-        return np.asarray(standard[name], dtype=float)
-    elif observer == "supplementary":
-        return np.asarray(supplementary[name], dtype=float)
+    if observer == "CIE 1931 2 deg":
+        return np.asarray(cie1931[name], dtype=float)
+    elif observer == "CIE 1964 10 deg":
+        return np.asarray(cie1964[name], dtype=float)
     else:
-        raise ValueError("observer must be 'standard' or 'supplementary', "
-                         "not %s" % (observer,))
+        raise ValueError("observer must be 'CIE 1931 2 deg' or "
+                         "'CIE 1964 10 deg', not %s" % (observer,))
 
 def test_standard_illuminant_XYZ100():
     assert np.allclose(
@@ -84,7 +85,7 @@ def test_standard_illuminant_XYZ100():
         [ 95.047, 100, 108.883])
 
     assert np.allclose(
-        standard_illuminant_XYZ100("D65", observer="supplementary"),
+        standard_illuminant_XYZ100("D65", observer="CIE 1964 10 deg"),
         [ 94.811, 100, 107.304])
 
     from nose.tools import assert_raises

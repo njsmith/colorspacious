@@ -6,6 +6,7 @@
 
 import numpy as np
 
+from .illuminants import as_XYZ_w
 from .testing import check_conversion
 
 ################################################################
@@ -127,7 +128,7 @@ def _f(t):
 
 def XYZ_to_CIELAB(XYZ, XYZ_w):
     XYZ = np.asarray(XYZ, dtype=float)
-    XYZ_w = np.asarray(XYZ_w, dtype=float)
+    XYZ_w = as_XYZ_w(XYZ_w)
 
     fXYZ_norm = _f(XYZ / XYZ_w)
     L = 116 * fXYZ_norm[..., 1:2] - 16
@@ -144,7 +145,7 @@ def _finv(t):
 
 def CIELAB_to_XYZ(CIELAB, XYZ_w):
     CIELAB = np.asarray(CIELAB, dtype=float)
-    XYZ_w = np.asarray(XYZ_w, dtype=float)
+    XYZ_w = as_XYZ_w(XYZ_w)
 
     L = CIELAB[..., 0]
     a = CIELAB[..., 1]
@@ -165,21 +166,20 @@ def CIELAB_to_XYZ(CIELAB, XYZ_w):
 
 def test_XYZ_to_CIELAB():
     from .gold_values import XYZ_CIELAB_gold_D65, XYZ_CIELAB_gold_D50
-    from .ciecam02 import Illuminant
 
     check_conversion(XYZ_to_CIELAB, CIELAB_to_XYZ,
                      XYZ_CIELAB_gold_D65,
                      # Stick to randomized values in the mid-range to avoid
                      # hitting negative luminances
                      b_min=[10, -30, -30], b_max=[90, 30, 30],
-                     XYZ_w=Illuminant.D65)
+                     XYZ_w="D65")
 
     check_conversion(XYZ_to_CIELAB, CIELAB_to_XYZ,
                      XYZ_CIELAB_gold_D50,
                      # Stick to randomized values in the mid-range to avoid
                      # hitting negative luminances
                      b_min=[10, -30, -30], b_max=[90, 30, 30],
-                     XYZ_w=Illuminant.D50)
+                     XYZ_w="D50")
 
     XYZ1 = np.asarray(XYZ_CIELAB_gold_D65[0][0])
     CIELAB1 = np.asarray(XYZ_CIELAB_gold_D65[0][1])
@@ -191,7 +191,7 @@ def test_XYZ_to_CIELAB():
                                 XYZ2[np.newaxis, :]))
     CIELAB_mixed = np.concatenate((CIELAB1[np.newaxis, :],
                                    CIELAB2[np.newaxis, :]))
-    XYZ_w_mixed = np.row_stack((Illuminant.D65, Illuminant.D50))
+    XYZ_w_mixed = np.row_stack((as_XYZ_w("D65"), as_XYZ_w("D50")))
 
     assert np.allclose(XYZ_to_CIELAB(XYZ_mixed, XYZ_w=XYZ_w_mixed),
                        CIELAB_mixed, rtol=0.001)

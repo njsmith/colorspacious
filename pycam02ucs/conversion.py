@@ -11,7 +11,7 @@ from .basics import (sRGB_to_sRGB_linear, sRGB_linear_to_sRGB,
                      XYZ_to_xyY, xyY_to_XYZ,
                      XYZ_to_CIELAB, CIELAB_to_XYZ)
 
-from .ciecam02 import ViewingConditions
+from .ciecam02 import CIECAM02Space
 from .luoetal2006 import (LuoEtAl2006UniformSpace,
                           CAM02UCS, CAM02LCD, CAM02SCD)
 
@@ -42,26 +42,26 @@ EDGES += pair("XYZ", {"name": "CIELAB", "XYZ_w": ANY},
 # XX: CIELCh
 # and J'/K M' h'
 
-def _XYZ_to_CIECAM02(XYZ, viewing_conditions):
-    return viewing_conditions.XYZ_to_CIECAM02(XYZ)
+def _XYZ_to_CIECAM02(XYZ, ciecam02_space):
+    return ciecam02_space.XYZ_to_CIECAM02(XYZ)
 
-def _CIECAM02_to_XYZ(CIECAM02, viewing_conditions):
-    return viewing_conditions.CIECAM02_to_XYZ(J=CIECAM02.J,
+def _CIECAM02_to_XYZ(CIECAM02, ciecam02_space):
+    return ciecam02_space.CIECAM02_to_XYZ(J=CIECAM02.J,
                                               C=CIECAM02.C,
                                               h=CIECAM02.h)
 
-EDGES += pair("XYZ", {"name": "CIECAM02", "viewing_conditions": ANY},
+EDGES += pair("XYZ", {"name": "CIECAM02", "ciecam02_space": ANY},
               _XYZ_to_CIECAM02, _CIECAM02_to_XYZ)
 
 _CIECAM02_axes = set("JChQMsH")
 
-def _CIECAM02_to_CIECAM02_subset(CIECAM02, viewing_conditions, axes):
+def _CIECAM02_to_CIECAM02_subset(CIECAM02, ciecam02_space, axes):
     pieces = []
     for axis in axes:
         pieces.append(getattr(CIECAM02, axis)[..., np.newaxis])
     return np.concatenate(pieces, axis=-1)
 
-def _CIECAM02_subset_to_XYZ(subset, viewing_conditions, axes):
+def _CIECAM02_subset_to_XYZ(subset, ciecam02_space, axes):
     subset = np.asarray(subset, dtype=float)
     kwargs = {}
     if subset.shape[-1] != len(axes):
@@ -70,7 +70,7 @@ def _CIECAM02_subset_to_XYZ(subset, viewing_conditions, axes):
                          % subset.shape[-1], len(axes), axes)
     for i, coord in enumerate(axes):
         kwargs[coord] = subset[..., i]
-    return viewing_conditions.CIECAM02_to_XYZ(**kwargs)
+    return ciecam02_space.CIECAM02_to_XYZ(**kwargs)
 
 # We do *not* provide any CIECAM02-subset <-> CIECAM02-subset converter
 # This will be implicitly created by going
@@ -78,27 +78,27 @@ def _CIECAM02_subset_to_XYZ(subset, viewing_conditions, axes):
 # which is the correct way to do it.
 EDGES += [
     Edge({"name": "CIECAM02",
-          "viewing_conditions": MATCH},
+          "ciecam02_space": MATCH},
          {"name": "CIECAM02-subset",
-          "viewing_conditions": MATCH, "axes": ANY},
+          "ciecam02_space": MATCH, "axes": ANY},
          _CIECAM02_to_CIECAM02_subset),
     Edge({"name": "CIECAM02-subset",
-          "viewing_conditions": ANY, "axes": ANY},
+          "ciecam02_space": ANY, "axes": ANY},
          {"name": "XYZ"},
          _CIECAM02_subset_to_XYZ),
     ]
 
-def _JMh_to_LuoEtAl2006(JMh, viewing_conditions, luoetal2006_space, axes):
+def _JMh_to_LuoEtAl2006(JMh, ciecam02_space, luoetal2006_space, axes):
     return luoetal2006_space.JMh_to_JKapbp(JMh)
 
-def _LuoEtAl2006_to_JMh(JKapbp, viewing_conditions, luoetal2006_space, axes):
+def _LuoEtAl2006_to_JMh(JKapbp, ciecam02_space, luoetal2006_space, axes):
     return luoetal2006_space.JKapbp_to_JMh(CAM02)
 
 EDGES += pair({"name": "CIECAM02-subset",
-                 "viewing_conditions": MATCH,
+                 "ciecam02_space": MATCH,
                  "axes": "JMh"},
               {"name": "J'a'b'",
-                 "viewing_conditions": MATCH,
+                 "ciecam02_space": MATCH,
                  "luoetal2006_space": ANY},
               _JMh_to_LuoEtAl2006, _LuoEtAl2006_to_JMh)
 
@@ -108,8 +108,8 @@ ALIASES = {
     "CAM02-UCS": CAM02UCS,
     "CAM02-LCD": CAM02LCD,
     "CAM02-SCD": CAM02SCD,
-    "CIECAM02": ViewingConditions.sRGB,
-    "CIELAB": {"name": "CIELAB", "XYZ_w": ViewingConditions.sRGB.XYZ_w},
+    "CIECAM02": CIECAM02Space.sRGB,
+    "CIELAB": {"name": "CIELAB", "XYZ_w": CIECAM02Space.sRGB.XYZ_w},
 }
 
 def norm_cspace_id(cspace):
@@ -120,16 +120,16 @@ def norm_cspace_id(cspace):
     if isinstance(cspace, str):
         if _CIECAM02_axes.issuperset(cspace):
             return {"name": "CIECAM02-subset",
-                    "viewing_conditions": ViewingConditions.sRGB,
+                    "ciecam02_space": CIECAM02Space.sRGB,
                     "axes": cspace}
         else:
             return {"name": cspace}
-    elif isinstance(cspace, ViewingConditions):
+    elif isinstance(cspace, CIECAM02Space):
         return {"name": "CIECAM02",
-                "viewing_conditions": cspace}
+                "ciecam02_space": cspace}
     elif isinstance(cspace, LuoEtAl2006UniformSpace):
         return {"name": "J'a'b'",
-                "viewing_conditions": ViewingConditions.sRGB,
+                "ciecam02_space": CIECAM02Space.sRGB,
                 "luoetal2006_space": cspace}
     elif isinstance(cspace, dict):
         if cspace["name"] in ALIASES:
@@ -177,12 +177,7 @@ def test_convert_cspace_long_paths():
 
     # Makes sure that CIELAB conversions are sensitive to whitepoint
     from .gold_values import XYZ_CIELAB_gold_D50
-    from .ciecam02 import Illuminant
-    vc = ViewingConditions(XYZ_w=Illuminant.D50,
-                           Y_b=ViewingConditions.sRGB.Y_b,
-                           L_A=ViewingConditions.sRGB.L_A,
-                           surround=ViewingConditions.sRGB.surround)
-    CIELAB_D50 = {"name": "CIELAB", "XYZ_w": Illuminant.D50}
+    CIELAB_D50 = {"name": "CIELAB", "XYZ_w": "D50"}
     check_conversion(lambda x:
                      convert_cspace(x, "XYZ", CIELAB_D50),
                      lambda y:
@@ -191,6 +186,9 @@ def test_convert_cspace_long_paths():
                      b_min=[10, -30, 30], b_max=[90, 30, 30])
 
     from .gold_values import XYZ_CIECAM02_gold
+    def stacklast(*arrs):
+        arrs = [np.asarray(arr)[..., np.newaxis] for arr in arrs]
+        return np.concatenate(arrs, axis=-1)
     for t in XYZ_CIECAM02_gold:
         # Check full-fledged CIECAM02 conversions
         xyY = convert_cspace(t.XYZ, "XYZ", "xyY")
@@ -201,12 +199,9 @@ def test_convert_cspace_long_paths():
         assert np.allclose(xyY_got, xyY)
 
         # Check subset CIECAM02 conversions
-        def stacklast(*arrs):
-            arrs = [np.asarray(arr)[..., np.newaxis] for arr in arrs]
-            return np.concatenate(arrs, axis=-1)
         def subset(axes):
             return {"name": "CIECAM02-subset",
-                    "axes": axes, "viewing_conditions": t.vc}
+                    "axes": axes, "ciecam02_space": t.vc}
         JCh = stacklast(t.expected.J, t.expected.C, t.expected.h)
         xyY_got2 = convert_cspace(JCh, subset("JCh"), "xyY")
         assert np.allclose(xyY_got2, xyY)
@@ -215,18 +210,41 @@ def test_convert_cspace_long_paths():
         assert np.allclose(JCh_got, JCh, rtol=1e-4)
 
         # Check subset->subset CIECAM02
+        # This needs only plain arrays so we can use check_conversion
         QMH = stacklast(t.expected.Q, t.expected.M, t.expected.H)
-        JCh_got2 = convert_cspace(QMH, subset("QMH"), subset("JCh"))
-        assert np.allclose(JCh_got2, JCh, rtol=1e-4)
+        check_conversion(lambda JCh:
+                         convert_cspace(JCh, subset("JCh"), subset("QMH")),
+                         lambda QMH:
+                         convert_cspace(QMH, subset("QMH"), subset("JCh")),
+                         [(JCh, QMH)],
+                         a_max=[100, 100, 360],
+                         b_max=[100, 100, 400])
 
-        # And check the JMh special case too
-        JMh = stacklast(t.expected.J, t.expected.M, t.expected.h)
-        assert np.allclose(convert_cspace(JMh, subset("JMh"), subset("JCh")),
-                           JCh, rtol=1e-4)
+    # Check that directly transforming between two different viewing
+    # conditions works.
+    # This exploits the fact that the first two entries in our gold vector
+    # have the same XYZ.
+    t1 = XYZ_CIECAM02_gold[0]
+    t2 = XYZ_CIECAM02_gold[1]
 
-        assert np.allclose(convert_cspace(JCh, subset("JCh"), subset("JMh")),
-                           JMh, rtol=1e-4)
+    # "If we have a color that looks like t1.expected under viewing conditions
+    # t1, then what does it look like under viewing conditions t2?"
+    got2 = convert_cspace(t1.expected, t1.vc, t2.vc)
+    for i in range(len(got2)):
+        assert np.allclose(got2[i], t2.expected[i], atol=1e-5)
 
-        # TODO: test JKapbp
-        # TODO: check transforms between different viewing conditions
-        #   the first two tests in our gold vector have the same XYZ
+    JCh1 = stacklast(t1.expected.J, t1.expected.C, t1.expected.h)
+    JCh2 = stacklast(t2.expected.J, t2.expected.C, t2.expected.h)
+    JCh_space1 = {"name": "CIECAM02-subset", "axes": "JCh",
+                  "ciecam02_space": t1.vc}
+    JCh_space2 = {"name": "CIECAM02-subset", "axes": "JCh",
+                  "ciecam02_space": t2.vc}
+    check_conversion(lambda JCh1:
+                     convert_cspace(JCh1, JCh_space1, JCh_space2),
+                     lambda JCh2:
+                     convert_cspace(JCh2, JCh_space2, JCh_space1),
+                     [(JCh1, JCh2)],
+                     a_max=[100, 100, 360],
+                     b_max=[100, 100, 360])
+
+    # TODO: test JKapbp

@@ -2,10 +2,12 @@
 # Copyright (C) 2014 Nathaniel Smith <njs@pobox.com>
 # See file LICENSE.txt for license information.
 
+from .illuminants import standard_illuminant_XYZ, as_XYZ_w
+
 from .ciecam02 import *
 
-from .cam02ucs import LuoEtAl2006UniformSpace, CAM02_UCS, CAM02_SCD, CAM02_LCD
+from .luoetal2006 import LuoEtAl2006UniformSpace, CAM02UCS, CAM02SCD, CAM02LCD
 
-from .conversion import convert_cspace
+from .conversion import cspace_converter, convert_cspace
 
 from .deltaEp import deltaEp

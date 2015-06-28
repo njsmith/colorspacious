@@ -8,28 +8,18 @@ from collections import namedtuple
 
 import numpy as np
 
+from .illuminants import as_XYZ_w
+
 # These all get re-exported at the package level
 __all__ = [
-    "Illuminant", "Surround", "ViewingConditions", "NegativeAError",
+    "CIECAM02Surround", "CIECAM02Space", "NegativeAError",
     "JChQMsH",
 ]
 
-class Illuminant(object):
-    def __init__(self):
-        # This is just a little namespace for constants
-        raise NotImplementedError
-
-    # Sourced from http://www.easyrgb.com/index.php?X=MATH&H=15
-    # 2 degree (CIE 1931) values
-    C   = np.asarray([98.074, 100, 118.232])
-    D50 = np.asarray([96.422, 100,  82.521])
-    D55 = np.asarray([95.682, 100,  92.149])
-    D65 = np.asarray([95.047, 100, 108.883])
-
-Surround = namedtuple("Surround", ["F", "c", "N_c"])
-Surround.AVERAGE = Surround(1.0, 0.69,  1.0)
-Surround.DIM     = Surround(0.9, 0.59,  1.95)
-Surround.DARK    = Surround(0.8, 0.525, 1.8)
+CIECAM02Surround = namedtuple("CIECAM02Surround", ["F", "c", "N_c"])
+CIECAM02Surround.AVERAGE = CIECAM02Surround(1.0, 0.69,  1.0)
+CIECAM02Surround.DIM     = CIECAM02Surround(0.9, 0.59,  1.95)
+CIECAM02Surround.DARK    = CIECAM02Surround(0.8, 0.525, 1.8)
 
 
 JChQMsH = namedtuple("JChQMsH", ["J", "C", "h", "Q", "M", "s", "H"])
@@ -80,7 +70,7 @@ def require_exactly_one(**kwargs):
 class NegativeAError(ValueError):
     pass
 
-class ViewingConditions(object):
+class CIECAM02Space(object):
     """
 
     Xw, Yw, Zw: whitepoint
@@ -97,8 +87,8 @@ class ViewingConditions(object):
     Dark      0.8   0.525  0.8
     """
     def __init__(self, XYZ_w, Y_b, L_A,
-                 surround=Surround.AVERAGE):
-        self.XYZ_w = np.array(XYZ_w, dtype=float)
+                 surround=CIECAM02Surround.AVERAGE):
+        self.XYZ_w = as_XYZ_w(XYZ_w)
         if self.XYZ_w.shape != (3,):
             raise ValueError("Hey! XYZ_w should have shape (3,)!")
         self.Y_b = float(Y_b)
@@ -135,7 +125,7 @@ class ViewingConditions(object):
 
     def __repr__(self):
         surround_string = ", surround=%r" % (self.surround,)
-        if self.surround == Surround.AVERAGE:
+        if self.surround == CIECAM02Surround.AVERAGE:
             surround_string = ""
         return "%s(%r, %r, %r%s) " % (
             self.__class__.__name__,
@@ -424,11 +414,11 @@ class ViewingConditions(object):
 
         return XYZ
 
-ViewingConditions.sRGB = ViewingConditions(
+CIECAM02Space.sRGB = CIECAM02Space(
     # sRGB specifies a D65 monitor and a D50 ambient. CIECAM02 doesn't really
     # know how to deal with this discrepancy; it appears that the usual thing
     # to do is just to use D65 for the whitepoint.
-    XYZ_w=Illuminant.D65,
+    XYZ_w="D65",
     Y_b=20,
     # To compute L_A:
     #   illuminance in lux / pi = luminance in cd/m^2
@@ -436,7 +426,7 @@ ViewingConditions.sRGB = ViewingConditions(
     # See Moroney (2000), "Usage guidelines for CIECAM97s".
     # sRGB illuminance is 64 lux.
     L_A=(64 / np.pi) * 5,
-    surround=Surround.AVERAGE)
+    surround=CIECAM02Surround.AVERAGE)
 
 
 ################################################################
@@ -473,19 +463,19 @@ def test_inverse():
     for i in range(10):
         XYZ_values.append(r.uniform(high=100, size=3))
 
-    for XYZ_w in [Illuminant.C, Illuminant.D50, Illuminant.D65]:
+    for illuminant in ["C", "D50", "D65"]:
         for Y_b in [20, 18]:
             for L_A in [30, 300]:
-                for surround in [Surround.AVERAGE,
-                                 Surround.DIM,
-                                 Surround.DARK]:
-                    vc = ViewingConditions(XYZ_w, Y_b, L_A, surround)
+                for surround in [CIECAM02Surround.AVERAGE,
+                                 CIECAM02Surround.DIM,
+                                 CIECAM02Surround.DARK]:
+                    vc = CIECAM02Space(illuminant, Y_b, L_A, surround)
                     for XYZ in XYZ_values:
                         check_roundtrip(vc, XYZ)
 
 def test_exactly_one():
     from nose.tools import assert_raises
-    vc = ViewingConditions.sRGB
+    vc = CIECAM02Space.sRGB
 
     # Redundant specifications not allowed
     assert_raises(ValueError, vc.CIECAM02_to_XYZ, J=1, C=1, h=1, Q=1)
@@ -500,7 +490,7 @@ def test_exactly_one():
 
 
 def test_vectorized():
-    vc = ViewingConditions.sRGB
+    vc = CIECAM02Space.sRGB
 
     XYZs = [[20, 30, 40], [40, 30, 20]]
     CIECAM02s = vc.XYZ_to_CIECAM02(XYZs)
@@ -515,7 +505,7 @@ def test_vectorized():
 def test_on_negative_A():
     from nose.tools import assert_raises
 
-    vc = ViewingConditions(Illuminant.D65, 20, 30)
+    vc = CIECAM02Space("D65", 20, 30)
     bad_XYZ = [8.71292997, 2.02183974, 83.26198455]
     good_XYZ = [20, 30, 40]
 

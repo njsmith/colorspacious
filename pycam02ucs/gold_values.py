@@ -6,7 +6,7 @@
 
 from collections import namedtuple
 
-from .ciecam02 import ViewingConditions, Surround, Illuminant, JChQMsH
+from .ciecam02 import CIECAM02Space, CIECAM02Surround, JChQMsH
 
 ################################################################
 # CIECAM02
@@ -14,49 +14,50 @@ from .ciecam02 import ViewingConditions, Surround, Illuminant, JChQMsH
 
 CIECAM02TestVec = namedtuple("CIECAM02TestVec", ["XYZ", "vc", "expected"])
 
+_S = CIECAM02Surround
 XYZ_CIECAM02_gold = [
     # Gold values from
     #   https://github.com/igd-geo/pcolor/blob/master/de.fhg.igd.pcolor.test/src/de/fhg/igd/pcolor/test/CAMWorkedExample.java
     # apparently taken from CIE 159:2004 Section 9
     CIECAM02TestVec(XYZ=[19.31, 23.93, 10.14],
-                    vc=ViewingConditions(XYZ_w=[98.88, 90, 32.03],
+                    vc=CIECAM02Space(XYZ_w=[98.88, 90, 32.03],
                                          L_A=200,
                                          Y_b=18,
-                                         surround=Surround(F=1.0,
-                                                           c=0.69,
-                                                           N_c=1.0)),
+                                         surround=_S(F=1.0,
+                                                     c=0.69,
+                                                     N_c=1.0)),
                     expected=JChQMsH(h=191.0452, J=48.0314, Q=183.1240,
                                      s=46.0177, C=38.7789, M=38.7789,
                                      H=240.8885)),
     CIECAM02TestVec(XYZ=[19.31, 23.93, 10.14],
-                    vc=ViewingConditions(XYZ_w=[98.88, 90, 32.03],
+                    vc=CIECAM02Space(XYZ_w=[98.88, 90, 32.03],
                                          L_A=20, # <- different from above
                                          Y_b=18,
-                                         surround=Surround(F=1.0,
-                                                           c=0.69,
-                                                           N_c=1.0)),
+                                         surround=_S(F=1.0,
+                                                     c=0.69,
+                                                     N_c=1.0)),
                     expected=JChQMsH(h=185.3445, J=47.6856, Q=113.8401,
                                      s=51.1275, C=36.0527, M=29.7580,
                                      H=232.6630)),
     # gold values from Mark Fairchild's spreadsheet at
     #   http://rit-mcsl.org/fairchild//files/AppModEx.xls
     CIECAM02TestVec(XYZ=[19.01, 20.00, 21.78],
-                    vc=ViewingConditions(XYZ_w=[95.05, 100.0, 108.88],
+                    vc=CIECAM02Space(XYZ_w=[95.05, 100.0, 108.88],
                                          Y_b=20.0,
                                          L_A=318.30988618379,
-                                         surround=Surround(F=1.0,
-                                                           c=0.69,
-                                                           N_c=1.0)),
+                                         surround=_S(F=1.0,
+                                                     c=0.69,
+                                                     N_c=1.0)),
                     expected=JChQMsH(h=219.04841, J=41.73109, Q=195.37131,
                                      s=2.36031, C=0.10471, M=0.10884,
                                      H=278.06070)),
     CIECAM02TestVec(XYZ=[57.06, 43.06, 31.96],
-                    vc=ViewingConditions(XYZ_w=[95.05, 100.0, 108.88],
+                    vc=CIECAM02Space(XYZ_w=[95.05, 100.0, 108.88],
                                          L_A=31.830988618379,
                                          Y_b=20.0,
-                                         surround=Surround(F=1.0,
-                                                           c=0.69,
-                                                           N_c=1.0)),
+                                         surround=_S(F=1.0,
+                                                     c=0.69,
+                                                     N_c=1.0)),
                     # The H value here based on the corrected version of the
                     # spreadsheet that I sent Mark Fairchild on
                     # 2014-07-15... the original spreadsheet had it wrong, so

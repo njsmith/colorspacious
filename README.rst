@@ -56,9 +56,6 @@ like to consider:
 
 
 
-todo: XYZ1 vs XYZ100? ditto for sRGB1 vs sRGB256?
-+ tons of search replace for all the variable names
-
 similarly fix naming for J'a'b' or JKapbp or whatever
 
 add colorblindness simulation

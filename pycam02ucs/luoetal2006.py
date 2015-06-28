@@ -9,25 +9,25 @@ class LuoEtAl2006UniformSpace(object):
         self.c1 = c1
         self.c2 = c2
 
-    def JMh_to_JKapbp(self, JMh):
+    def JMh_to_Jpapbp(self, JMh):
         JMh = np.asarray(JMh, dtype=float)
         J = JMh[..., 0]
         M = JMh[..., 1]
         h = JMh[..., 2]
         Jp = (1 + 100 * self.c1) * J / (1 + self.c1 * J)
-        JK = Jp / self.KL
+        Jp = Jp / self.KL
         Mp = (1. / self.c2) * np.log(1 + self.c2 * M)
         h_rad = np.deg2rad(h)
         ap = Mp * np.cos(h_rad)
         bp = Mp * np.sin(h_rad)
-        return np.array([JK, ap, bp]).T
+        return np.array([Jp, ap, bp]).T
 
-    def JKapbp_to_JMh(self, JKapbp):
-        JKapbp = np.asarray(JKapbp)
-        JK = JKapbp[..., 0]
-        ap = JKapbp[..., 1]
-        bp = JKapbp[..., 2]
-        Jp = JK * self.KL
+    def Jpapbp_to_JMh(self, Jpapbp):
+        Jpapbp = np.asarray(Jpapbp)
+        Jp = Jpapbp[..., 0]
+        ap = Jpapbp[..., 1]
+        bp = Jpapbp[..., 2]
+        Jp = Jp * self.KL
         J = - Jp / (self.c1 * Jp - 100 * self.c1 - 1)
         # a' = M' * cos(h)
         # b' = M' * sin(h)

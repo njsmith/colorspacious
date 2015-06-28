@@ -101,10 +101,10 @@ EDGES += [
     ]
 
 def _JMh_to_LuoEtAl2006(JMh, ciecam02_space, luoetal2006_space, axes):
-    return luoetal2006_space.JMh_to_JKapbp(JMh)
+    return luoetal2006_space.JMh_to_Jpapbp(JMh)
 
-def _LuoEtAl2006_to_JMh(JKapbp, ciecam02_space, luoetal2006_space, axes):
-    return luoetal2006_space.JKapbp_to_JMh(CAM02)
+def _LuoEtAl2006_to_JMh(Jpapbp, ciecam02_space, luoetal2006_space, axes):
+    return luoetal2006_space.Jpapbp_to_JMh(CAM02)
 
 EDGES += pair({"name": "CIECAM02-subset",
                  "ciecam02_space": MATCH,
@@ -259,4 +259,4 @@ def test_convert_cspace_long_paths():
                      a_max=[100, 100, 360],
                      b_max=[100, 100, 360])
 
-    # TODO: test JKapbp
+    # TODO: test Jpapbp

@@ -37,7 +37,7 @@ EDGES += pair("sRGB-linear", "XYZ", sRGB_linear_to_XYZ, XYZ_to_sRGB_linear)
 EDGES += pair("XYZ", "xyY", XYZ_to_xyY, xyY_to_XYZ)
 
 EDGES += pair("XYZ", {"name": "CIELAB", "XYZ_w": ANY},
-              CIELAB_to_XYZ, XYZ_to_CIELAB)
+              XYZ_to_CIELAB, CIELAB_to_XYZ)
 
 # XX: CIELCh
 # and J'/K M' h'
@@ -55,21 +55,21 @@ EDGES += pair("XYZ", {"name": "CIECAM02", "viewing_conditions": ANY},
 
 _CIECAM02_axes = set("JChQMsH")
 
-def _CIECAM02_to_CIECAM02_partial(CIECAM02, viewing_conditions, axes):
+def _CIECAM02_to_CIECAM02_subset(CIECAM02, viewing_conditions, axes):
     pieces = []
     for axis in axes:
         pieces.append(getattr(CIECAM02, axis)[..., np.newaxis])
     return np.concatenate(pieces, axis=-1)
 
-def _CIECAM02_partial_to_XYZ(partial, viewing_conditions, axes):
-    partial = np.asarray(partial, dtype=float)
+def _CIECAM02_subset_to_XYZ(subset, viewing_conditions, axes):
+    subset = np.asarray(subset, dtype=float)
     kwargs = {}
-    if partial.shape[-1] != len(axes):
+    if subset.shape[-1] != len(axes):
         raise ValueError("shape mismatch: last dimension of color array is "
                          "%s, but need %s for %r"
-                         % partial.shape[-1], len(axes), axes)
+                         % subset.shape[-1], len(axes), axes)
     for i, coord in enumerate(axes):
-        kwargs[coord] = partial[..., i]
+        kwargs[coord] = subset[..., i]
     return viewing_conditions.CIECAM02_to_XYZ(**kwargs)
 
 # We do *not* provide any CIECAM02-subset <-> CIECAM02-subset converter
@@ -81,11 +81,11 @@ EDGES += [
           "viewing_conditions": MATCH},
          {"name": "CIECAM02-subset",
           "viewing_conditions": MATCH, "axes": ANY},
-         _CIECAM02_to_CIECAM02_partial),
+         _CIECAM02_to_CIECAM02_subset),
     Edge({"name": "CIECAM02-subset",
           "viewing_conditions": ANY, "axes": ANY},
          {"name": "XYZ"},
-         _CIECAM02_partial_to_XYZ),
+         _CIECAM02_subset_to_XYZ),
     ]
 
 def _JMh_to_LuoEtAl2006(JMh, viewing_conditions, luoetal2006_space, axes):
@@ -113,7 +113,10 @@ ALIASES = {
 }
 
 def norm_cspace_id(cspace):
-    cspace = ALIASES.get(cspace, cspace)
+    try:
+        cspace = ALIASES[cspace]
+    except (KeyError, TypeError):
+        pass
     if isinstance(cspace, str):
         if _CIECAM02_axes.issuperset(cspace):
             return {"name": "CIECAM02-subset",
@@ -131,7 +134,7 @@ def norm_cspace_id(cspace):
     elif isinstance(cspace, dict):
         if cspace["name"] in ALIASES:
             base = ALIASES[cspace["name"]]
-            if isinstance(base, dict) and base["name"] == name:
+            if isinstance(base, dict) and base["name"] == cspace["name"]:
                 # avoid infinite recursion
                 return cspace
             else:
@@ -179,12 +182,11 @@ def test_convert_cspace_long_paths():
                            Y_b=ViewingConditions.sRGB.Y_b,
                            L_A=ViewingConditions.sRGB.L_A,
                            surround=ViewingConditions.sRGB.surround)
+    CIELAB_D50 = {"name": "CIELAB", "XYZ_w": Illuminant.D50}
     check_conversion(lambda x:
-                     convert_cspace(x, "XYZ", "CIELAB",
-                                    viewing_conditions=vc),
+                     convert_cspace(x, "XYZ", CIELAB_D50),
                      lambda y:
-                     convert_cspace(y, "CIELAB", "XYZ",
-                                    viewing_conditions=vc),
+                     convert_cspace(y, CIELAB_D50, "XYZ"),
                      XYZ_CIELAB_gold_D50,
                      b_min=[10, -30, 30], b_max=[90, 30, 30])
 
@@ -192,38 +194,39 @@ def test_convert_cspace_long_paths():
     for t in XYZ_CIECAM02_gold:
         # Check full-fledged CIECAM02 conversions
         xyY = convert_cspace(t.XYZ, "XYZ", "xyY")
-        CIECAM02_got = convert_cspace(xyY, "xyY", "CIECAM02",
-                                      viewing_conditions=t.vc)
+        CIECAM02_got = convert_cspace(xyY, "xyY", t.vc)
         for i in range(len(CIECAM02_got)):
             assert np.allclose(CIECAM02_got[i], t.expected[i], atol=1e-5)
-        xyY_got = convert_cspace(CIECAM02_got, "CIECAM02", "xyY",
-                                 viewing_conditions=t.vc)
+        xyY_got = convert_cspace(CIECAM02_got, t.vc, "xyY")
         assert np.allclose(xyY_got, xyY)
 
-        # Check partial CIECAM02 conversions
+        # Check subset CIECAM02 conversions
         def stacklast(*arrs):
             arrs = [np.asarray(arr)[..., np.newaxis] for arr in arrs]
             return np.concatenate(arrs, axis=-1)
+        def subset(axes):
+            return {"name": "CIECAM02-subset",
+                    "axes": axes, "viewing_conditions": t.vc}
         JCh = stacklast(t.expected.J, t.expected.C, t.expected.h)
-        xyY_got2 = convert_cspace(JCh, "JCh", "xyY", viewing_conditions=t.vc)
+        xyY_got2 = convert_cspace(JCh, subset("JCh"), "xyY")
         assert np.allclose(xyY_got2, xyY)
 
-        JCh_got = convert_cspace(xyY, "xyY", "JCh", viewing_conditions=t.vc)
+        JCh_got = convert_cspace(xyY, "xyY", subset("JCh"))
         assert np.allclose(JCh_got, JCh, rtol=1e-4)
 
-        # Check partial->partial CIECAM02
+        # Check subset->subset CIECAM02
         QMH = stacklast(t.expected.Q, t.expected.M, t.expected.H)
-        JCh_got2 = convert_cspace(QMH, "QMH", "JCh", viewing_conditions=t.vc)
+        JCh_got2 = convert_cspace(QMH, subset("QMH"), subset("JCh"))
         assert np.allclose(JCh_got2, JCh, rtol=1e-4)
 
         # And check the JMh special case too
         JMh = stacklast(t.expected.J, t.expected.M, t.expected.h)
-        assert np.allclose(convert_cspace(JMh, "JMh", "JCh",
-                                          viewing_conditions=t.vc),
+        assert np.allclose(convert_cspace(JMh, subset("JMh"), subset("JCh")),
                            JCh, rtol=1e-4)
 
-        assert np.allclose(convert_cspace(JCh, "JCh", "JMh",
-                                          viewing_conditions=t.vc),
+        assert np.allclose(convert_cspace(JCh, subset("JCh"), subset("JMh")),
                            JMh, rtol=1e-4)
 
         # TODO: test JKapbp
+        # TODO: check transforms between different viewing conditions
+        #   the first two tests in our gold vector have the same XYZ

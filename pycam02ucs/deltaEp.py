@@ -5,7 +5,7 @@
 from .conversion import convert_cspace
 
 def deltaEp(color1, color2,
-            source_space="sRGB", uniform_space="CAM02-UCS");
+            source_space="sRGB", uniform_space="CAM02-UCS"):
     """Computes the :math:`\delta E` distance between pairs of colors.
 
     This function is vectorized, i.e., color1, color2 may be arrays with shape

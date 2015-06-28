@@ -512,7 +512,7 @@ def test_transform_kwargs():
     assert_(transform_kwargs(
         {"name": "start", "a": 1, "b": 2},
         {"name": "end", "b": 2, "c": 3}
-        ) == {"a": 1, "b": 2})
+        ) == {"a": 1, "b": 2, "c": 3})
     assert_raises(AssertionError, transform_kwargs,
                   {"name": "start", "a": 1},
                   {"name": "end",   "a": 2})
@@ -625,7 +625,7 @@ class TransformGraph(object):
         best_path = None
         for path in self._shortest_paths[(start_name, end_name)]:
             if path_matches(path, start, end):
-                if best_path is None or len(best_path.path) > len(path.path):
+                if best_path is None or len(best_path.nodes) > len(path.nodes):
                     best_path = path
         if best_path is None:
             raise ValueError("No path found from %r -> %r" % (start, end))
@@ -637,7 +637,7 @@ class TransformGraph(object):
             kwargs = transform_kwargs(concrete_nodes[i],
                                       concrete_nodes[i + 1])
             kwargses.append(kwargs)
-        return Transform(concrete_nodes, path.transforms, kwargses)
+        return Transform(concrete_nodes, best_path.transforms, kwargses)
 
     def dump_dot(self, f): # pragma: no cover
         f.write("digraph {\n")

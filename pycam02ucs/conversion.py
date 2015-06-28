@@ -7,9 +7,9 @@ from collections import defaultdict
 
 from .testing import check_conversion
 from .basics import (sRGB_to_sRGB_linear, sRGB_linear_to_sRGB,
-                     sRGB_linear_to_XYZ, XYZ_to_sRGB_linear,
-                     XYZ_to_xyY, xyY_to_XYZ,
-                     XYZ_to_CIELAB, CIELAB_to_XYZ)
+                     sRGB_linear_to_XYZ100, XYZ100_to_sRGB_linear,
+                     XYZ100_to_xyY, xyY_to_XYZ100,
+                     XYZ100_to_CIELAB, CIELAB_to_XYZ100)
 
 from .ciecam02 import CIECAM02Space
 from .luoetal2006 import (LuoEtAl2006UniformSpace,
@@ -30,28 +30,36 @@ def pair(a, b, a2b, b2a):
         b = {"name": b}
     return [Edge(a, b, a2b), Edge(b, a, b2a)]
 
+EDGES += pair("sRGB", "sRGB255",
+              lambda sRGB: np.asarray(sRGB) / 255.0,
+              lambda sRGB255: np.asarray(sRGB255) * 255.0)
+
 EDGES += pair("sRGB", "sRGB-linear", sRGB_to_sRGB_linear, sRGB_linear_to_sRGB)
 
-EDGES += pair("sRGB-linear", "XYZ", sRGB_linear_to_XYZ, XYZ_to_sRGB_linear)
+EDGES += pair("sRGB-linear", "XYZ100", sRGB_linear_to_XYZ100, XYZ100_to_sRGB_linear)
 
-EDGES += pair("XYZ", "xyY", XYZ_to_xyY, xyY_to_XYZ)
+EDGES += pair("XYZ100", "XYZ1",
+              lambda XYZ100: np.asarray(XYZ100) / 100.,
+              lambda XYZ1: np.asarray(XYZ1) * 100.0)
 
-EDGES += pair("XYZ", {"name": "CIELAB", "XYZ_w": ANY},
-              XYZ_to_CIELAB, CIELAB_to_XYZ)
+EDGES += pair("XYZ100", "xyY", XYZ100_to_xyY, xyY_to_XYZ100)
+
+EDGES += pair("XYZ100", {"name": "CIELAB", "XYZ100_w": ANY},
+              XYZ100_to_CIELAB, CIELAB_to_XYZ100)
 
 # XX: CIELCh
 # and J'/K M' h'
 
-def _XYZ_to_CIECAM02(XYZ, ciecam02_space):
-    return ciecam02_space.XYZ_to_CIECAM02(XYZ)
+def _XYZ100_to_CIECAM02(XYZ100, ciecam02_space):
+    return ciecam02_space.XYZ100_to_CIECAM02(XYZ100)
 
-def _CIECAM02_to_XYZ(CIECAM02, ciecam02_space):
-    return ciecam02_space.CIECAM02_to_XYZ(J=CIECAM02.J,
+def _CIECAM02_to_XYZ100(CIECAM02, ciecam02_space):
+    return ciecam02_space.CIECAM02_to_XYZ100(J=CIECAM02.J,
                                               C=CIECAM02.C,
                                               h=CIECAM02.h)
 
-EDGES += pair("XYZ", {"name": "CIECAM02", "ciecam02_space": ANY},
-              _XYZ_to_CIECAM02, _CIECAM02_to_XYZ)
+EDGES += pair("XYZ100", {"name": "CIECAM02", "ciecam02_space": ANY},
+              _XYZ100_to_CIECAM02, _CIECAM02_to_XYZ100)
 
 _CIECAM02_axes = set("JChQMsH")
 
@@ -61,7 +69,7 @@ def _CIECAM02_to_CIECAM02_subset(CIECAM02, ciecam02_space, axes):
         pieces.append(getattr(CIECAM02, axis)[..., np.newaxis])
     return np.concatenate(pieces, axis=-1)
 
-def _CIECAM02_subset_to_XYZ(subset, ciecam02_space, axes):
+def _CIECAM02_subset_to_XYZ100(subset, ciecam02_space, axes):
     subset = np.asarray(subset, dtype=float)
     kwargs = {}
     if subset.shape[-1] != len(axes):
@@ -70,11 +78,11 @@ def _CIECAM02_subset_to_XYZ(subset, ciecam02_space, axes):
                          % subset.shape[-1], len(axes), axes)
     for i, coord in enumerate(axes):
         kwargs[coord] = subset[..., i]
-    return ciecam02_space.CIECAM02_to_XYZ(**kwargs)
+    return ciecam02_space.CIECAM02_to_XYZ100(**kwargs)
 
 # We do *not* provide any CIECAM02-subset <-> CIECAM02-subset converter
 # This will be implicitly created by going
-#   CIECAM02-subset -> XYZ -> CIECAM02 -> CIECAM02-subset
+#   CIECAM02-subset -> XYZ100 -> CIECAM02 -> CIECAM02-subset
 # which is the correct way to do it.
 EDGES += [
     Edge({"name": "CIECAM02",
@@ -84,8 +92,8 @@ EDGES += [
          _CIECAM02_to_CIECAM02_subset),
     Edge({"name": "CIECAM02-subset",
           "ciecam02_space": ANY, "axes": ANY},
-         {"name": "XYZ"},
-         _CIECAM02_subset_to_XYZ),
+         {"name": "XYZ100"},
+         _CIECAM02_subset_to_XYZ100),
     ]
 
 def _JMh_to_LuoEtAl2006(JMh, ciecam02_space, luoetal2006_space, axes):
@@ -109,7 +117,7 @@ ALIASES = {
     "CAM02-LCD": CAM02LCD,
     "CAM02-SCD": CAM02SCD,
     "CIECAM02": CIECAM02Space.sRGB,
-    "CIELAB": {"name": "CIELAB", "XYZ_w": CIECAM02Space.sRGB.XYZ_w},
+    "CIELAB": {"name": "CIELAB", "XYZ100_w": CIECAM02Space.sRGB.XYZ100_w},
 }
 
 def norm_cspace_id(cspace):
@@ -176,22 +184,22 @@ def test_convert_cspace_long_paths():
                      gold_rtol=1.5e-2)
 
     # Makes sure that CIELAB conversions are sensitive to whitepoint
-    from .gold_values import XYZ_CIELAB_gold_D50
-    CIELAB_D50 = {"name": "CIELAB", "XYZ_w": "D50"}
+    from .gold_values import XYZ100_CIELAB_gold_D50
+    CIELAB_D50 = {"name": "CIELAB", "XYZ100_w": "D50"}
     check_conversion(lambda x:
-                     convert_cspace(x, "XYZ", CIELAB_D50),
+                     convert_cspace(x, "XYZ100", CIELAB_D50),
                      lambda y:
-                     convert_cspace(y, CIELAB_D50, "XYZ"),
-                     XYZ_CIELAB_gold_D50,
+                     convert_cspace(y, CIELAB_D50, "XYZ100"),
+                     XYZ100_CIELAB_gold_D50,
                      b_min=[10, -30, 30], b_max=[90, 30, 30])
 
-    from .gold_values import XYZ_CIECAM02_gold
+    from .gold_values import XYZ100_CIECAM02_gold
     def stacklast(*arrs):
         arrs = [np.asarray(arr)[..., np.newaxis] for arr in arrs]
         return np.concatenate(arrs, axis=-1)
-    for t in XYZ_CIECAM02_gold:
+    for t in XYZ100_CIECAM02_gold:
         # Check full-fledged CIECAM02 conversions
-        xyY = convert_cspace(t.XYZ, "XYZ", "xyY")
+        xyY = convert_cspace(t.XYZ100, "XYZ100", "xyY")
         CIECAM02_got = convert_cspace(xyY, "xyY", t.vc)
         for i in range(len(CIECAM02_got)):
             assert np.allclose(CIECAM02_got[i], t.expected[i], atol=1e-5)
@@ -223,9 +231,9 @@ def test_convert_cspace_long_paths():
     # Check that directly transforming between two different viewing
     # conditions works.
     # This exploits the fact that the first two entries in our gold vector
-    # have the same XYZ.
-    t1 = XYZ_CIECAM02_gold[0]
-    t2 = XYZ_CIECAM02_gold[1]
+    # have the same XYZ100.
+    t1 = XYZ100_CIECAM02_gold[0]
+    t2 = XYZ100_CIECAM02_gold[1]
 
     # "If we have a color that looks like t1.expected under viewing conditions
     # t1, then what does it look like under viewing conditions t2?"

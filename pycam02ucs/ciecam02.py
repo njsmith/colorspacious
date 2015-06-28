@@ -8,7 +8,7 @@ from collections import namedtuple
 
 import numpy as np
 
-from .illuminants import as_XYZ_w
+from .illuminants import as_XYZ100_w
 
 # These all get re-exported at the package level
 __all__ = [
@@ -86,11 +86,11 @@ class CIECAM02Space(object):
     Dim       0.9   0.59   0.95
     Dark      0.8   0.525  0.8
     """
-    def __init__(self, XYZ_w, Y_b, L_A,
+    def __init__(self, XYZ100_w, Y_b, L_A,
                  surround=CIECAM02Surround.AVERAGE):
-        self.XYZ_w = as_XYZ_w(XYZ_w)
-        if self.XYZ_w.shape != (3,):
-            raise ValueError("Hey! XYZ_w should have shape (3,)!")
+        self.XYZ100_w = as_XYZ100_w(XYZ100_w)
+        if self.XYZ100_w.shape != (3,):
+            raise ValueError("Hey! XYZ100_w should have shape (3,)!")
         self.Y_b = float(Y_b)
         self.L_A = float(L_A)
         self.surround = surround
@@ -98,11 +98,11 @@ class CIECAM02Space(object):
         self.c = float(surround.c)
         self.N_c = float(surround.N_c)
 
-        self.RGB_w = np.dot(M_CAT02, self.XYZ_w)
+        self.RGB_w = np.dot(M_CAT02, self.XYZ100_w)
         self.D = self.F * (1 - (1/3.6) * np.exp((-self.L_A - 42) / 92))
         self.D = np.clip(self.D, 0, 1)
 
-        self.D_RGB = self.D * self.XYZ_w[1] / self.RGB_w + 1 - self.D
+        self.D_RGB = self.D * self.XYZ100_w[1] / self.RGB_w + 1 - self.D
         # Fairchild (2013), pages 290-292, recommends using this equation
         # instead, though notes that it doesn't make much difference as part
         # of a full CIECAM02 system. (It matters more if you're only using
@@ -111,7 +111,7 @@ class CIECAM02Space(object):
         self.k = 1 / (5 * self.L_A + 1)
         self.F_L = (0.2 * self.k ** 4 * (5 * self.L_A)
                     + 0.1 * (1 - self.k**4)**2 * (5 * self.L_A) ** (1./3))
-        self.n = self.Y_b / self.XYZ_w[1]
+        self.n = self.Y_b / self.XYZ100_w[1]
         self.z = 1.48 + np.sqrt(self.n)
         self.N_bb = 0.725 * (1 / self.n)**0.2
         self.N_cb = self.N_bb  #??
@@ -129,23 +129,23 @@ class CIECAM02Space(object):
             surround_string = ""
         return "%s(%r, %r, %r%s) " % (
             self.__class__.__name__,
-            list(self.XYZ_w),
+            list(self.XYZ100_w),
             self.Y_b,
             self.L_A,
             surround_string)
 
-    # XYZ must have shape (3,) or (3, n)
-    def XYZ_to_CIECAM02(self, XYZ, on_negative_A="raise"):
+    # XYZ100 must have shape (3,) or (3, n)
+    def XYZ100_to_CIECAM02(self, XYZ100, on_negative_A="raise"):
         """Computes CIECAM02 appearance correlates for the given tristimulus
-        value(s) XYZ.
+        value(s) XYZ (normalized to be on the 0-100 scale).
 
-        Example: ``vc.XYZ_to_CIECAM02([30.0, 45.5, 21.0])``
+        Example: ``vc.XYZ100_to_CIECAM02([30.0, 45.5, 21.0])``
 
-        :arg XYZ: An array-like of tristimulus values. These should be given
-          on the 0-100 scale, not the 0-1 scale. The array-like should have
-          shape ``(..., 3)``; e.g., you can use a simple 3-item list (shape =
-          ``(3,)``, or to efficiently perform multiple computations at once,
-          you should
+        :arg XYZ100: An array-like of tristimulus values. These should be
+          given on the 0-100 scale, not the 0-1 scale. The array-like should
+          have shape ``(..., 3)``; e.g., you can use a simple 3-item list
+          (shape = ``(3,)``), or to efficiently perform multiple computations
+          at once, you could pass a higher-dimensional array, e.g. an image.
         :arg on_negative_A: A known infelicity of the CIECAM02 model is that
           for some inputs, the achromatic signal :math:`A` can be negative,
           which makes it impossible to compute :math:`J`, :math:`C`,
@@ -174,13 +174,13 @@ class CIECAM02Space(object):
 
         #### Argument checking
 
-        XYZ = np.asarray(XYZ, dtype=float)
-        if XYZ.shape[-1] != 3:
-            raise ValueError("XYZ shape must be (..., 3)")
+        XYZ100 = np.asarray(XYZ100, dtype=float)
+        if XYZ100.shape[-1] != 3:
+            raise ValueError("XYZ100 shape must be (..., 3)")
 
         #### Step 1
 
-        RGB = broadcasting_matvec(M_CAT02, XYZ)
+        RGB = broadcasting_matvec(M_CAT02, XYZ100)
 
         #### Step 2
 
@@ -256,8 +256,8 @@ class CIECAM02Space(object):
         return ((4 / self.c) * (J / 100) ** 0.5
                 * (self.A_w + 4) * self.F_L**0.25)
 
-    def CIECAM02_to_XYZ(self, J=None, C=None, h=None,
-                        Q=None, M=None, s=None, H=None):
+    def CIECAM02_to_XYZ100(self, J=None, C=None, h=None,
+                           Q=None, M=None, s=None, H=None):
         """Return the unique tristimulus values that have the given CIECAM02
         appearance correlates under these viewing conditions.
 
@@ -408,17 +408,17 @@ class CIECAM02Space(object):
 
         #### Step 8
 
-        XYZ = broadcasting_matvec(M_CAT02_inv, RGB)
+        XYZ100 = broadcasting_matvec(M_CAT02_inv, RGB)
 
-        XYZ = XYZ.reshape(target_shape + (3,))
+        XYZ100 = XYZ100.reshape(target_shape + (3,))
 
-        return XYZ
+        return XYZ100
 
 CIECAM02Space.sRGB = CIECAM02Space(
     # sRGB specifies a D65 monitor and a D50 ambient. CIECAM02 doesn't really
     # know how to deal with this discrepancy; it appears that the usual thing
     # to do is just to use D65 for the whitepoint.
-    XYZ_w="D65",
+    XYZ100_w="D65",
     Y_b=20,
     # To compute L_A:
     #   illuminance in lux / pi = luminance in cd/m^2
@@ -433,35 +433,35 @@ CIECAM02Space.sRGB = CIECAM02Space(
 # Tests
 ################################################################
 
-def check_roundtrip(vc, XYZ):
+def check_roundtrip(vc, XYZ100):
     try:
-        values = vc.XYZ_to_CIECAM02(XYZ, on_negative_A="raise")
+        values = vc.XYZ100_to_CIECAM02(XYZ100, on_negative_A="raise")
     except NegativeAError:
         # don't expect to be able to round-trip these values
         return
     for kwarg1 in ["J", "Q"]:
         for kwarg2 in ["C", "M", "s"]:
             for kwarg3 in ["h", "H"]:
-                got = vc.CIECAM02_to_XYZ(**{kwarg1: getattr(values, kwarg1),
+                got = vc.CIECAM02_to_XYZ100(**{kwarg1: getattr(values, kwarg1),
                                             kwarg2: getattr(values, kwarg2),
                                             kwarg3: getattr(values, kwarg3)})
-                assert np.allclose(got, XYZ)
+                assert np.allclose(got, XYZ100)
 
 def test_gold():
-    from .gold_values import XYZ_CIECAM02_gold
+    from .gold_values import XYZ100_CIECAM02_gold
 
-    for t in XYZ_CIECAM02_gold:
-        got = t.vc.XYZ_to_CIECAM02(t.XYZ)
+    for t in XYZ100_CIECAM02_gold:
+        got = t.vc.XYZ100_to_CIECAM02(t.XYZ100)
         for i in range(len(got)):
             if t.expected[i] is not None:
                 assert np.allclose(got[i], t.expected[i], atol=1e-05)
-        check_roundtrip(t.vc, t.XYZ)
+        check_roundtrip(t.vc, t.XYZ100)
 
 def test_inverse():
     r = np.random.RandomState(0)
-    XYZ_values = [[0, 0, 0], [50, 50, 50]]
+    XYZ100_values = [[0, 0, 0], [50, 50, 50]]
     for i in range(10):
-        XYZ_values.append(r.uniform(high=100, size=3))
+        XYZ100_values.append(r.uniform(high=100, size=3))
 
     for illuminant in ["C", "D50", "D65"]:
         for Y_b in [20, 18]:
@@ -470,60 +470,62 @@ def test_inverse():
                                  CIECAM02Surround.DIM,
                                  CIECAM02Surround.DARK]:
                     vc = CIECAM02Space(illuminant, Y_b, L_A, surround)
-                    for XYZ in XYZ_values:
-                        check_roundtrip(vc, XYZ)
+                    for XYZ100 in XYZ100_values:
+                        check_roundtrip(vc, XYZ100)
 
 def test_exactly_one():
     from nose.tools import assert_raises
     vc = CIECAM02Space.sRGB
 
     # Redundant specifications not allowed
-    assert_raises(ValueError, vc.CIECAM02_to_XYZ, J=1, C=1, h=1, Q=1)
-    assert_raises(ValueError, vc.CIECAM02_to_XYZ, J=1, C=1, h=1, M=1)
-    assert_raises(ValueError, vc.CIECAM02_to_XYZ, J=1, C=1, h=1, s=1)
-    assert_raises(ValueError, vc.CIECAM02_to_XYZ, J=1, C=1, h=1, H=1)
+    assert_raises(ValueError, vc.CIECAM02_to_XYZ100, J=1, C=1, h=1, Q=1)
+    assert_raises(ValueError, vc.CIECAM02_to_XYZ100, J=1, C=1, h=1, M=1)
+    assert_raises(ValueError, vc.CIECAM02_to_XYZ100, J=1, C=1, h=1, s=1)
+    assert_raises(ValueError, vc.CIECAM02_to_XYZ100, J=1, C=1, h=1, H=1)
 
     # Underspecified colors not allowed either
-    assert_raises(ValueError, vc.CIECAM02_to_XYZ, J=1, C=1)
-    assert_raises(ValueError, vc.CIECAM02_to_XYZ, J=1, h=1)
-    assert_raises(ValueError, vc.CIECAM02_to_XYZ, C=1, h=1)
+    assert_raises(ValueError, vc.CIECAM02_to_XYZ100, J=1, C=1)
+    assert_raises(ValueError, vc.CIECAM02_to_XYZ100, J=1, h=1)
+    assert_raises(ValueError, vc.CIECAM02_to_XYZ100, C=1, h=1)
 
 
 def test_vectorized():
     vc = CIECAM02Space.sRGB
 
-    XYZs = [[20, 30, 40], [40, 30, 20]]
-    CIECAM02s = vc.XYZ_to_CIECAM02(XYZs)
+    XYZ100s = [[20, 30, 40], [40, 30, 20]]
+    CIECAM02s = vc.XYZ100_to_CIECAM02(XYZ100s)
 
-    for i, XYZ in enumerate(XYZs):
-        CIECAM02 = vc.XYZ_to_CIECAM02(XYZ)
+    for i, XYZ100 in enumerate(XYZ100s):
+        CIECAM02 = vc.XYZ100_to_CIECAM02(XYZ100)
         for j in range(len(CIECAM02)):
             assert np.allclose(CIECAM02[j], CIECAM02s[j][i])
 
-    check_roundtrip(vc, XYZs)
+    check_roundtrip(vc, XYZ100s)
 
 def test_on_negative_A():
     from nose.tools import assert_raises
 
     vc = CIECAM02Space("D65", 20, 30)
-    bad_XYZ = [8.71292997, 2.02183974, 83.26198455]
-    good_XYZ = [20, 30, 40]
+    bad_XYZ100 = [8.71292997, 2.02183974, 83.26198455]
+    good_XYZ100 = [20, 30, 40]
 
-    assert_raises(NegativeAError, vc.XYZ_to_CIECAM02, bad_XYZ)
-    assert_raises(NegativeAError, vc.XYZ_to_CIECAM02, [bad_XYZ, good_XYZ])
-    assert_raises(NegativeAError, vc.XYZ_to_CIECAM02, bad_XYZ,
+    assert_raises(NegativeAError, vc.XYZ100_to_CIECAM02, bad_XYZ100)
+    assert_raises(NegativeAError, vc.XYZ100_to_CIECAM02,
+                  [bad_XYZ100, good_XYZ100])
+    assert_raises(NegativeAError, vc.XYZ100_to_CIECAM02, bad_XYZ100,
                   on_negative_A="raise")
-    assert_raises(NegativeAError, vc.XYZ_to_CIECAM02, [bad_XYZ, good_XYZ],
+    assert_raises(NegativeAError, vc.XYZ100_to_CIECAM02,
+                  [bad_XYZ100, good_XYZ100],
                   on_negative_A="raise")
 
-    bad_CIECAM02 = vc.XYZ_to_CIECAM02(bad_XYZ, on_negative_A="nan")
+    bad_CIECAM02 = vc.XYZ100_to_CIECAM02(bad_XYZ100, on_negative_A="nan")
     for bad_attr in "JCQMs":
         assert np.isnan(getattr(bad_CIECAM02, bad_attr))
     assert np.allclose(bad_CIECAM02.h, 205.80008)
     assert np.allclose(bad_CIECAM02.H, 261.11054)
 
-    mixed_CIECAM02 = vc.XYZ_to_CIECAM02([bad_XYZ, good_XYZ],
-                                        on_negative_A="nan")
+    mixed_CIECAM02 = vc.XYZ100_to_CIECAM02([bad_XYZ100, good_XYZ100],
+                                           on_negative_A="nan")
     for bad_attr in "JCQMs":
         assert np.all(np.isnan(getattr(mixed_CIECAM02, bad_attr))
                       == [True, False])

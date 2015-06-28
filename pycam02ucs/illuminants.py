@@ -4,7 +4,7 @@
 
 import numpy as np
 
-__all__ = ["standard_illuminant_XYZ", "as_XYZ_w"]
+__all__ = ["standard_illuminant_XYZ100", "as_XYZ100_w"]
 
 # The "standard" 2 degree observer (CIE 1931)
 # Sourced from http://www.easyrgb.com/index.php?X=MATH&H=15
@@ -41,7 +41,7 @@ supplementary = {
 # than 4 degrees, use of the CIE 1964 supplementary standard colorimetric
 # observer is recommended." (page 82, when discussing CIE94 delta-E)
 
-def standard_illuminant_XYZ(name, observer="standard"):
+def standard_illuminant_XYZ100(name, observer="standard"):
     """Takes a string naming a standard illuminant, and returns its XYZ
     coordinates (normalized to Y = 100).
 
@@ -78,45 +78,46 @@ def standard_illuminant_XYZ(name, observer="standard"):
         raise ValueError("observer must be 'standard' or 'supplementary', "
                          "not %s" % (observer,))
 
-def test_standard_illuminant_XYZ():
+def test_standard_illuminant_XYZ100():
     assert np.allclose(
-        standard_illuminant_XYZ("D65"),
+        standard_illuminant_XYZ100("D65"),
         [ 95.047, 100, 108.883])
 
     assert np.allclose(
-        standard_illuminant_XYZ("D65", observer="supplementary"),
+        standard_illuminant_XYZ100("D65", observer="supplementary"),
         [ 94.811, 100, 107.304])
 
     from nose.tools import assert_raises
-    assert_raises(ValueError, standard_illuminant_XYZ, "D65",
+    assert_raises(ValueError, standard_illuminant_XYZ100, "D65",
                   observer="something else")
 
 # Convenience function
-def as_XYZ_w(whitepoint):
+def as_XYZ100_w(whitepoint):
     """A convenience function for getting whitepoints.
 
     ``whitepoint`` can be either a string naming a standard illuminant (see
-    :func:`standard_illuminant_XYZ`), or else a whitepoint given explicitly as
-    an array-like of XYZ values.
+    :func:`standard_illuminant_XYZ100`), or else a whitepoint given explicitly
+    as an array-like of XYZ values.
 
     We internally call this function anywhere you have to specify a whitepoint
     (e.g. for CIECAM02 or CIELAB conversions).
 
     Always uses the "standard" 2 degree observer.
+
     """
     if isinstance(whitepoint, str):
-        return standard_illuminant_XYZ(whitepoint)
+        return standard_illuminant_XYZ100(whitepoint)
     else:
         whitepoint = np.asarray(whitepoint, dtype=float)
         if whitepoint.shape[-1] != 3:
             raise ValueError("Bad whitepoint shape")
         return whitepoint
 
-def test_as_XYZ_w():
-    assert np.allclose(as_XYZ_w("D65"), [ 95.047, 100, 108.883])
-    assert np.allclose(as_XYZ_w([1, 2, 3]), [1, 2, 3])
-    assert as_XYZ_w([1, 2, 3]).dtype == float
+def test_as_XYZ100_w():
+    assert np.allclose(as_XYZ100_w("D65"), [ 95.047, 100, 108.883])
+    assert np.allclose(as_XYZ100_w([1, 2, 3]), [1, 2, 3])
+    assert as_XYZ100_w([1, 2, 3]).dtype == float
 
     from nose.tools import assert_raises
-    assert_raises(KeyError, as_XYZ_w, "D666")
-    assert_raises(ValueError, as_XYZ_w, [1, 2, 3, 4])
+    assert_raises(KeyError, as_XYZ100_w, "D666")
+    assert_raises(ValueError, as_XYZ100_w, [1, 2, 3, 4])

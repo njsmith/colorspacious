@@ -133,10 +133,10 @@ XYZ100_CIELAB_gold_D50 = [
 
 # http://www.brucelindbloom.com/index.html?ColorCalculator.html
 # not very accurate
-sRGB_xyY_gold = [([1.012114, 0.554529, 0.567375],
-                  [0.432011, 0.326015, 43.0600]),
-                 ([0.2, 0.4, 0.6],
-                  [0.210775, 0.222162, 12.5053])]
+sRGB_xyY100_gold = [([1.012114, 0.554529, 0.567375],
+                     [0.432011, 0.326015, 43.0600]),
+                    ([0.2, 0.4, 0.6],
+                     [0.210775, 0.222162, 12.5053])]
 
 # http://davengrace.com/dave/cspace/
 # (More accurate than the Lindbloom calculator at least for this...)

@@ -8,7 +8,7 @@ from collections import defaultdict
 from .testing import check_conversion
 from .basics import (sRGB_to_sRGB_linear, sRGB_linear_to_sRGB,
                      sRGB_linear_to_XYZ100, XYZ100_to_sRGB_linear,
-                     XYZ100_to_xyY, xyY_to_XYZ100,
+                     XYZ100_to_xyY100, xyY100_to_XYZ100,
                      XYZ100_to_CIELAB, CIELAB_to_XYZ100)
 
 from .ciecam02 import CIECAM02Space
@@ -42,7 +42,11 @@ EDGES += pair("XYZ100", "XYZ1",
               lambda XYZ100: np.asarray(XYZ100) / 100.,
               lambda XYZ1: np.asarray(XYZ1) * 100.0)
 
-EDGES += pair("XYZ100", "xyY", XYZ100_to_xyY, xyY_to_XYZ100)
+EDGES += pair("XYZ100", "xyY100", XYZ100_to_xyY100, xyY100_to_XYZ100)
+
+EDGES += pair("xyY100", "xyY1",
+              lambda xyY100: np.asarray(xyY100) / 100.,
+              lambda xyY1: np.asarray(xyY1) * 100.0)
 
 EDGES += pair("XYZ100", {"name": "CIELAB", "XYZ100_w": ANY},
               XYZ100_to_CIELAB, CIELAB_to_XYZ100)
@@ -165,10 +169,10 @@ def convert_cspace(arr, start, end):
     return converter(arr)
 
 def test_convert_cspace_long_paths():
-    from .gold_values import sRGB_xyY_gold
-    check_conversion(lambda x: convert_cspace(x, "sRGB", "xyY"),
-                     lambda y: convert_cspace(y, "xyY", "sRGB"),
-                     sRGB_xyY_gold,
+    from .gold_values import sRGB_xyY100_gold
+    check_conversion(lambda x: convert_cspace(x, "sRGB", "xyY100"),
+                     lambda y: convert_cspace(y, "xyY100", "sRGB"),
+                     sRGB_xyY100_gold,
                      a_min=0, a_max=1,
                      b_min=0, b_max=[1, 1, 100])
 
@@ -199,22 +203,22 @@ def test_convert_cspace_long_paths():
         return np.concatenate(arrs, axis=-1)
     for t in XYZ100_CIECAM02_gold:
         # Check full-fledged CIECAM02 conversions
-        xyY = convert_cspace(t.XYZ100, "XYZ100", "xyY")
-        CIECAM02_got = convert_cspace(xyY, "xyY", t.vc)
+        xyY100 = convert_cspace(t.XYZ100, "XYZ100", "xyY100")
+        CIECAM02_got = convert_cspace(xyY100, "xyY100", t.vc)
         for i in range(len(CIECAM02_got)):
             assert np.allclose(CIECAM02_got[i], t.expected[i], atol=1e-5)
-        xyY_got = convert_cspace(CIECAM02_got, t.vc, "xyY")
-        assert np.allclose(xyY_got, xyY)
+        xyY100_got = convert_cspace(CIECAM02_got, t.vc, "xyY100")
+        assert np.allclose(xyY100_got, xyY100)
 
         # Check subset CIECAM02 conversions
         def subset(axes):
             return {"name": "CIECAM02-subset",
                     "axes": axes, "ciecam02_space": t.vc}
         JCh = stacklast(t.expected.J, t.expected.C, t.expected.h)
-        xyY_got2 = convert_cspace(JCh, subset("JCh"), "xyY")
-        assert np.allclose(xyY_got2, xyY)
+        xyY100_got2 = convert_cspace(JCh, subset("JCh"), "xyY100")
+        assert np.allclose(xyY100_got2, xyY100)
 
-        JCh_got = convert_cspace(xyY, "xyY", subset("JCh"))
+        JCh_got = convert_cspace(xyY100, "xyY100", subset("JCh"))
         assert np.allclose(JCh_got, JCh, rtol=1e-4)
 
         # Check subset->subset CIECAM02

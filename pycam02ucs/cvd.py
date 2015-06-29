@@ -28,6 +28,9 @@ def machado_et_al_2009_matrix(cvd_type, severity):
     assert low <= severity <= high
 
     low_matrix = np.asarray(MACHADO_ET_AL_MATRICES[cvd_type][low])
+    if severity == 100:
+        # Don't try interpolating between 100 and 110, there is no 110...
+        return low_matrix
     high_matrix = np.asarray(MACHADO_ET_AL_MATRICES[cvd_type][high])
     return ((1 - fraction / 10.0) * low_matrix
             + fraction / 10.0 * high_matrix)
@@ -49,6 +52,11 @@ def test_machado_et_al_2009_matrix():
         machado_et_al_2009_matrix("deuteranomaly", 53.1),
         0.31 * deuter60 + (1 - 0.31) * deuter50)
 
+    # Test that 0 and 100 work as arguments
+    assert np.allclose(machado_et_al_2009_matrix("protanomaly", 0)[0, 0],
+                       1.0)
+    assert np.allclose(machado_et_al_2009_matrix("protanomaly", 100)[0, 0],
+                       0.152286)
 
 MACHADO_ET_AL_MATRICES = {
     "protanomaly": {

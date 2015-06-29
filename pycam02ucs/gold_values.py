@@ -74,7 +74,7 @@ XYZ100_CIECAM02_gold = [
 # Test values from http://davengrace.com/dave/cspace/
 # In their notation, "sRGB'" is regular sRGB, and "sRGB" is sRGB_linear
 # AFAICT these are accurate
-sRGB_sRGB_linear_gold = [
+sRGB1_sRGB1_linear_gold = [
     ([0.1, 0.2, 0.3],
      [0.010022825574869, 0.0331047665708851, 0.0732389558784054]),
     ([0.9, 0.8, 0.7],
@@ -87,10 +87,10 @@ sRGB_sRGB_linear_gold = [
 
 # Test values from http://davengrace.com/dave/cspace/
 # This uses a rounded-off sRGB->XYZ100 matrix so has some error
-sRGB_linear_XYZ100_gold = [
-    ([0.00650735931, 0.00789021442, 0.114259116060], # sRGB_linear
+sRGB1_linear_XYZ100_gold = [
+    ([0.00650735931, 0.00789021442, 0.114259116060], # sRGB1_linear
      [2.61219, 1.52732, 10.96471]),                  # XYZ100
-    ([0.03836396959, 0.01531740787, 0.014587362033], # sRGB_linear
+    ([0.03836396959, 0.01531740787, 0.014587362033], # sRGB1_linear
      [2.39318, 2.01643, 1.64315]),                   # XYZ100
     ]
 
@@ -147,19 +147,19 @@ XYZ100_CIELCh_gold_D50 = [
 
 # http://www.brucelindbloom.com/index.html?ColorCalculator.html
 # not very accurate
-sRGB_xyY100_gold = [([1.012114, 0.554529, 0.567375],
+sRGB1_xyY100_gold = [([1.012114, 0.554529, 0.567375],
                      [0.432011, 0.326015, 43.0600]),
                     ([0.2, 0.4, 0.6],
                      [0.210775, 0.222162, 12.5053])]
 
-sRGB_xyY1_gold = [([1.012114, 0.554529, 0.567375],
+sRGB1_xyY1_gold = [([1.012114, 0.554529, 0.567375],
                    [0.432011, 0.326015, 0.430600]),
                   ([0.2, 0.4, 0.6],
                    [0.210775, 0.222162, 0.125053])]
 
 # http://davengrace.com/dave/cspace/
 # (More accurate than the Lindbloom calculator at least for this...)
-sRGB_CIELab_gold_D65 = [
+sRGB1_CIELab_gold_D65 = [
     ([0.2, 0.4, 0.6],
      [42.0099857768665, -0.147373964354935, -32.8445986139017]),
     ([0.1, 1.1, -0.1],

@@ -31,7 +31,7 @@ def C_srgb(C_linear):
     out[~linear_portion] = (1+a) * C_linear[~linear_portion] ** (1/2.4) - a
     return out
 
-XYZ100_to_sRGB_matrix = np.array([
+XYZ100_to_sRGB1_matrix = np.array([
     # This is the exact matrix specified in IEC 61966-2-1:1999
     [ 3.2406, -1.5372, -0.4986],
     [-0.9689,  1.8758,  0.0415],
@@ -39,49 +39,49 @@ XYZ100_to_sRGB_matrix = np.array([
     ])
 
 # Condition number is 4.3, inversion is safe:
-sRGB_to_XYZ100_matrix = np.linalg.inv(XYZ100_to_sRGB_matrix)
+sRGB1_to_XYZ100_matrix = np.linalg.inv(XYZ100_to_sRGB1_matrix)
 
-def XYZ100_to_sRGB_linear(XYZ100):
+def XYZ100_to_sRGB1_linear(XYZ100):
     """Convert XYZ to linear sRGB, where XYZ is normalized so that reference
-    white D65 is X=95.05, Y=100, Z=108.90. Linear sRGB has a linear
-    relationship to actual light, so it is an appropriate space for simulating
-    light (e.g. for alpha blending).
+    white D65 is X=95.05, Y=100, Z=108.90 and sRGB is on the 0-1 scale. Linear
+    sRGB has a linear relationship to actual light, so it is an appropriate
+    space for simulating light (e.g. for alpha blending).
 
     """
     XYZ100 = np.asarray(XYZ100, dtype=float)
     # this is broadcasting matrix * array-of-vectors, where the vector is the
     # last dim
-    RGB_linear = np.einsum("...ij,...j->...i", XYZ100_to_sRGB_matrix, XYZ100 / 100)
+    RGB_linear = np.einsum("...ij,...j->...i", XYZ100_to_sRGB1_matrix, XYZ100 / 100)
     return RGB_linear
 
-def sRGB_linear_to_sRGB(sRGB_linear):
-    return C_srgb(np.asarray(sRGB_linear, dtype=float))
+def sRGB1_linear_to_sRGB1(sRGB1_linear):
+    return C_srgb(np.asarray(sRGB1_linear, dtype=float))
 
-def sRGB_to_sRGB_linear(sRGB):
+def sRGB1_to_sRGB1_linear(sRGB1):
     """Convert sRGB (as floats in the 0-to-1 range) to linear sRGB."""
-    sRGB = np.asarray(sRGB, dtype=float)
-    sRGB_linear = C_linear(sRGB)
-    return sRGB_linear
+    sRGB1 = np.asarray(sRGB1, dtype=float)
+    sRGB1_linear = C_linear(sRGB1)
+    return sRGB1_linear
 
-def sRGB_linear_to_XYZ100(sRGB_linear):
-    sRGB_linear = np.asarray(sRGB_linear, dtype=float)
+def sRGB1_linear_to_XYZ100(sRGB1_linear):
+    sRGB1_linear = np.asarray(sRGB1_linear, dtype=float)
     # this is broadcasting matrix * array-of-vectors, where the vector is the
     # last dim
-    XYZ100 = np.einsum("...ij,...j->...i", sRGB_to_XYZ100_matrix, sRGB_linear)
+    XYZ100 = np.einsum("...ij,...j->...i", sRGB1_to_XYZ100_matrix, sRGB1_linear)
     XYZ100 *= 100
     return XYZ100
 
-def test_sRGB_to_sRGB_linear():
-    from .gold_values import sRGB_sRGB_linear_gold
-    check_conversion(sRGB_to_sRGB_linear, sRGB_linear_to_sRGB,
-                     sRGB_sRGB_linear_gold,
+def test_sRGB1_to_sRGB1_linear():
+    from .gold_values import sRGB1_sRGB1_linear_gold
+    check_conversion(sRGB1_to_sRGB1_linear, sRGB1_linear_to_sRGB1,
+                     sRGB1_sRGB1_linear_gold,
                      a_max=1, b_max=1)
 
-def test_sRGB_linear_to_XYZ100():
-    from .gold_values import sRGB_linear_XYZ100_gold
-    check_conversion(sRGB_linear_to_XYZ100, XYZ100_to_sRGB_linear,
-                      sRGB_linear_XYZ100_gold,
-                      a_max=1, b_max=100)
+def test_sRGB1_linear_to_XYZ100():
+    from .gold_values import sRGB1_linear_XYZ100_gold
+    check_conversion(sRGB1_linear_to_XYZ100, XYZ100_to_sRGB1_linear,
+                     sRGB1_linear_XYZ100_gold,
+                     a_max=1, b_max=100)
 
 ################################################################
 # XYZ <-> xyY

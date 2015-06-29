@@ -7,8 +7,8 @@ from collections import defaultdict
 
 from .util import stacklast
 from .testing import check_conversion
-from .basics import (sRGB_to_sRGB_linear, sRGB_linear_to_sRGB,
-                     sRGB_linear_to_XYZ100, XYZ100_to_sRGB_linear,
+from .basics import (sRGB1_to_sRGB1_linear, sRGB1_linear_to_sRGB1,
+                     sRGB1_linear_to_XYZ100, XYZ100_to_sRGB1_linear,
                      XYZ_to_xyY, xyY_to_XYZ,
                      XYZ100_to_CIELab, CIELab_to_XYZ100,
                      CIELab_to_CIELCh, CIELCh_to_CIELab)
@@ -33,8 +33,8 @@ def pair(a, b, a2b, b2a):
         b = {"name": b}
     return [Edge(a, b, a2b), Edge(b, a, b2a)]
 
-EDGES += pair("sRGB", "sRGB255",
-              lambda sRGB: np.asarray(sRGB) * 255.0,
+EDGES += pair("sRGB1", "sRGB255",
+              lambda sRGB1: np.asarray(sRGB1) * 255.0,
               lambda sRGB255: np.asarray(sRGB255) / 255.0)
 
 def _apply_rgb_mat(mat, rgb):
@@ -48,24 +48,24 @@ def _CVD_inverse(sRGB, cvd_type, severity):
     forward = machado_et_al_2009_matrix(cvd_type, severity)
     return _apply_rgb_mat(np.linalg.inv(forward), sRGB)
 
-EDGES += pair({"name": "sRGB+CVD", "cvd_type": MATCH, "severity": MATCH},
-              {"name": "sRGB-linear+CVD", "cvd_type": MATCH, "severity": MATCH},
-              sRGB_to_sRGB_linear, sRGB_linear_to_sRGB)
+EDGES += pair({"name": "sRGB1+CVD", "cvd_type": MATCH, "severity": MATCH},
+              {"name": "sRGB1-linear+CVD", "cvd_type": MATCH, "severity": MATCH},
+              sRGB1_to_sRGB1_linear, sRGB1_linear_to_sRGB1)
 
-EDGES += pair({"name": "sRGB-linear+CVD", "cvd_type": ANY, "severity": ANY},
-              "sRGB-linear",
+EDGES += pair({"name": "sRGB1-linear+CVD", "cvd_type": ANY, "severity": ANY},
+              "sRGB1-linear",
               _CVD_forward, _CVD_inverse)
 
-EDGES += pair("sRGB", "sRGB-linear", sRGB_to_sRGB_linear, sRGB_linear_to_sRGB)
+EDGES += pair("sRGB1", "sRGB1-linear", sRGB1_to_sRGB1_linear, sRGB1_linear_to_sRGB1)
 
-EDGES += pair("XYZ100", "xyY100", XYZ_to_xyY, xyY_to_XYZ)
-EDGES += pair("XYZ1", "xyY1", XYZ_to_xyY, xyY_to_XYZ)
-
-EDGES += pair("sRGB-linear", "XYZ100", sRGB_linear_to_XYZ100, XYZ100_to_sRGB_linear)
+EDGES += pair("sRGB1-linear", "XYZ100", sRGB1_linear_to_XYZ100, XYZ100_to_sRGB1_linear)
 
 EDGES += pair("XYZ100", "XYZ1",
               lambda XYZ100: np.asarray(XYZ100) / 100.,
               lambda XYZ1: np.asarray(XYZ1) * 100.0)
+
+EDGES += pair("XYZ1", "xyY1", XYZ_to_xyY, xyY_to_XYZ)
+EDGES += pair("XYZ100", "xyY100", XYZ_to_xyY, xyY_to_XYZ)
 
 EDGES += pair("XYZ100", {"name": "CIELab", "XYZ100_w": ANY},
               XYZ100_to_CIELab, CIELab_to_XYZ100)
@@ -143,9 +143,8 @@ EDGES += pair({"name": "CIECAM02-subset",
 GRAPH = TransformGraph(EDGES,
                        # Stuff that should go on the same row of the generated
                        # graphviz plot
-                       [["sRGB", "sRGB+CVD"],
-                        ["sRGB-linear", "sRGB-linear+CVD"],
-                        ["XYZ100", "XYZ1"],
+                       [["sRGB1", "sRGB1+CVD"],
+                        ["sRGB1-linear", "sRGB1-linear+CVD"],
                     ])
 
 ALIASES = {
@@ -209,13 +208,13 @@ def check_convert_cspace(source_cspace, target_cspace, gold, **kwargs):
     check_conversion(forward, reverse, gold, **kwargs)
 
 def test_convert_cspace_long_paths():
-    from .gold_values import sRGB_xyY100_gold
-    check_convert_cspace("sRGB", "xyY100", sRGB_xyY100_gold,
+    from .gold_values import sRGB1_xyY100_gold
+    check_convert_cspace("sRGB1", "xyY100", sRGB1_xyY100_gold,
                          a_min=0, a_max=1,
                          b_min=0, b_max=[1, 1, 100])
 
-    from .gold_values import sRGB_xyY1_gold
-    check_convert_cspace("sRGB", "xyY1", sRGB_xyY1_gold,
+    from .gold_values import sRGB1_xyY1_gold
+    check_convert_cspace("sRGB1", "xyY1", sRGB1_xyY1_gold,
                          a_min=0, a_max=1,
                          b_min=0, b_max=1)
 
@@ -224,8 +223,8 @@ def test_convert_cspace_long_paths():
                          a_min=0, a_max=1,
                          b_min=0, b_max=255)
 
-    from .gold_values import sRGB_CIELab_gold_D65
-    check_convert_cspace("sRGB", "CIELab", sRGB_CIELab_gold_D65,
+    from .gold_values import sRGB1_CIELab_gold_D65
+    check_convert_cspace("sRGB1", "CIELab", sRGB1_CIELab_gold_D65,
                          a_min=0, a_max=1,
                          b_min=[10, -30, 30], b_max=[90, 30, 30],
                          # Ridiculously low precision, but both Lindbloom and

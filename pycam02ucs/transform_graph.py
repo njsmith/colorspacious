@@ -2,6 +2,8 @@
 # Copyright (C) 2015 Nathaniel Smith <njs@pobox.com>
 # See file LICENSE.txt for license information.
 
+import numpy as np
+
 from collections import namedtuple, defaultdict
 
 __all__ = ["Edge", "MATCH", "ANY", "TransformGraph"]
@@ -492,6 +494,12 @@ def test_concretize_path_node():
         {"name": "end",   "a": "ea",  "b": "eb", "c": "ec"})
             == {"name": "foo", "a": "sa", "b": "eb", "c": "given"})
 
+def safe_equal(a, b):
+    if isinstance(a, np.ndarray) or isinstance(b, np.ndarray):
+        return np.array_equal(a, b)
+    else:
+        return a == b
+
 def transform_kwargs(start_concrete_node, end_concrete_node):
     kwargs = {}
     for k, v in start_concrete_node.items():
@@ -500,7 +508,7 @@ def transform_kwargs(start_concrete_node, end_concrete_node):
     for k, v in end_concrete_node.items():
         if k != "name":
             if k in kwargs:
-                assert_(kwargs[k] == v)
+                assert_(safe_equal(kwargs[k], v))
             else:
                 kwargs[k] = v
     return kwargs

@@ -10,6 +10,8 @@ from .testing import check_conversion
 from .basics import (sRGB_to_sRGB_linear, sRGB_linear_to_sRGB,
                      sRGB_linear_to_XYZ100, XYZ100_to_sRGB_linear,
                      XYZ_to_xyY, xyY_to_XYZ,
+                     XYZ100_to_CIELAB, CIELAB_to_XYZ100,
+                     CIELAB_to_CIELCh, CIELCh_to_CIELAB)
 
 from .ciecam02 import CIECAM02Space
 from .luoetal2006 import (LuoEtAl2006UniformSpace,
@@ -67,6 +69,16 @@ EDGES += pair("XYZ100", "XYZ1",
 
 EDGES += pair("XYZ100", {"name": "CIELAB", "XYZ100_w": ANY},
               XYZ100_to_CIELAB, CIELAB_to_XYZ100)
+
+def _CIELAB_to_CIELCh(CIELAB, XYZ100_w):
+    return CIELAB_to_CIELCh(CIELAB)
+
+def _CIELCh_to_CIELAB(CIELCh, XYZ100_w):
+    return CIELCh_to_CIELAB(CIELCh)
+
+EDGES += pair({"name": "CIELAB", "XYZ100_w": MATCH},
+              {"name": "CIELCh", "XYZ100_w": MATCH},
+              _CIELAB_to_CIELCh, _CIELCh_to_CIELAB)
 
 def _XYZ100_to_CIECAM02(XYZ100, ciecam02_space):
     return ciecam02_space.XYZ100_to_CIECAM02(XYZ100)
@@ -142,6 +154,7 @@ ALIASES = {
     "CAM02-SCD": CAM02SCD,
     "CIECAM02": CIECAM02Space.sRGB,
     "CIELAB": {"name": "CIELAB", "XYZ100_w": CIECAM02Space.sRGB.XYZ100_w},
+    "CIELCh": {"name": "CIELCh", "XYZ100_w": CIECAM02Space.sRGB.XYZ100_w},
 }
 
 def norm_cspace_id(cspace):
@@ -225,6 +238,19 @@ def test_convert_cspace_long_paths():
     check_convert_cspace("XYZ100", {"name": "CIELAB", "XYZ100_w": "D50"},
                          XYZ100_CIELAB_gold_D50,
                          b_min=[10, -30, 30], b_max=[90, 30, 30])
+
+    from .gold_values import XYZ100_CIELCh_gold_D65
+    check_convert_cspace("XYZ100", "CIELCh",
+                         XYZ100_CIELCh_gold_D65,
+                         a_min=[10, -30, 30], a_max=[90, 30, 30],
+                         b_min=0, b_max=[100, 50, 360])
+
+    from .gold_values import XYZ100_CIELCh_gold_D50
+    check_convert_cspace("XYZ100",
+                         {"name": "CIELCh", "XYZ100_w": "D50"},
+                         XYZ100_CIELCh_gold_D50,
+                         a_min=[10, -30, 30], a_max=[90, 30, 30],
+                         b_min=0, b_max=[100, 50, 360])
 
     from .gold_values import XYZ100_CIECAM02_gold
     for t in XYZ100_CIECAM02_gold:

@@ -6,7 +6,7 @@
 
 import numpy as np
 
-from .util import stacklast
+from .util import stacklast, color_cart2polar, color_polar2cart
 from .illuminants import as_XYZ100_w
 from .testing import check_conversion
 
@@ -111,7 +111,7 @@ _XYZ100_to_xyY100_test_vectors = [
 
 _XYZ1_to_xyY1_test_vectors = [
     ([0.10, 0.20, 0.30], [ 0.10 / 0.60,  0.20 / 0.60, 0.20]),
-    ([0.99, 0.98,  0.3], [0.99 / 2.00, 0.98 / 2.00, 0.98]),
+    ([0.99, 0.98, 0.03], [0.99 / 2.00, 0.98 / 2.00, 0.98]),
     ]
 
 def test_XYZ_to_xyY():
@@ -203,3 +203,23 @@ def test_XYZ100_to_CIELAB():
                        CIELAB_mixed, rtol=0.001)
     assert np.allclose(CIELAB_to_XYZ100(CIELAB_mixed, XYZ100_w=XYZ100_w_mixed),
                        XYZ100_mixed, rtol=0.001)
+
+################################################################
+# CIELAB <-> CIELCh
+################################################################
+
+def CIELAB_to_CIELCh(CIELAB):
+    CIELAB = np.asarray(CIELAB)
+    L = CIELAB[..., 0]
+    a = CIELAB[..., 1]
+    b = CIELAB[..., 2]
+    C, h = color_cart2polar(a, b)
+    return stacklast(L, C, h)
+
+def CIELCh_to_CIELAB(CIELCh):
+    CIELCh = np.asarray(CIELCh)
+    L = CIELCh[..., 0]
+    C = CIELCh[..., 1]
+    h = CIELCh[..., 2]
+    a, b = color_polar2cart(C, h)
+    return stacklast(L, a, b)

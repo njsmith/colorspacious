@@ -21,18 +21,6 @@ import numpy as np
 def machado_et_al_2009_matrix(cvd_type, severity):
     assert 0 <= severity <= 100
 
-    # 99.9 and 100 have identical matrices to 3 decimal points But the
-    # condition number of 99.9 is ~3000, and the condition number of 100 is
-    # ~2.4 million. So clamping the value to 99.9 gives us a version of
-    # dichromatopsia that is almost identical to the full thing, but
-    # numerically invertible. Basically what it means is that if you try to
-    # invert it, it has to invent a new dimension from nothing; this way,
-    # it'll at least try to invent the dimension that works best for anomalous
-    # trichromats. Not sure if this actually helps anything but at least it
-    # assuages my guilt at using np.linalg.inv for the inverse model :-)
-    if severity > 99.9:
-        severity = 99.9
-
     fraction = severity % 10
 
     low = int(severity - fraction)
@@ -40,6 +28,9 @@ def machado_et_al_2009_matrix(cvd_type, severity):
     assert low <= severity <= high
 
     low_matrix = np.asarray(MACHADO_ET_AL_MATRICES[cvd_type][low])
+    if severity == 100:
+        # Don't try interpolating between 100 and 110, there is no 110...
+        return low_matrix
     high_matrix = np.asarray(MACHADO_ET_AL_MATRICES[cvd_type][high])
     return ((1 - fraction / 10.0) * low_matrix
             + fraction / 10.0 * high_matrix)

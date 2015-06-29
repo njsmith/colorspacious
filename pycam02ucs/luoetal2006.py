@@ -4,7 +4,7 @@
 
 import numpy as np
 
-from .util import stacklast
+from .util import stacklast, color_cart2polar, color_polar2cart
 
 class LuoEtAl2006UniformSpace(object):
     def __init__(self, KL, c1, c2):
@@ -20,9 +20,7 @@ class LuoEtAl2006UniformSpace(object):
         Jp = (1 + 100 * self.c1) * J / (1 + self.c1 * J)
         Jp = Jp / self.KL
         Mp = (1. / self.c2) * np.log(1 + self.c2 * M)
-        h_rad = np.deg2rad(h)
-        ap = Mp * np.cos(h_rad)
-        bp = Mp * np.sin(h_rad)
+        ap, bp = color_polar2cart(Mp, h)
         return stacklast(Jp, ap, bp)
 
     def Jpapbp_to_JMh(self, Jpapbp):
@@ -32,19 +30,7 @@ class LuoEtAl2006UniformSpace(object):
         bp = Jpapbp[..., 2]
         Jp = Jp * self.KL
         J = - Jp / (self.c1 * Jp - 100 * self.c1 - 1)
-        # a' = M' * cos(h)
-        # b' = M' * sin(h)
-        # M' = b'/sin(h)
-        # a' = (b'/sin(h)) * cos(h)
-        # a' = b' * cos(h) / sin(h)
-        # sin(h) = b'/a' * cos(h), 0 <= h <= 2pi and 0 <= M <= 100
-        # -> tan(h) = b'/a'
-        # -> h = arctan2(b', a')
-        h_rad = np.arctan2(bp, ap)
-        Mp = bp/np.sin(h_rad)
-        Mpp = ap/np.cos(h_rad)
-        np.testing.assert_allclose(Mp, Mpp)
-        h = np.rad2deg(h_rad) % 360
+        Mp, h = color_cart2polar(ap, bp)
         M = (np.exp(self.c2*Mp) - 1) / self.c2
         return stacklast(J, M, h)
 

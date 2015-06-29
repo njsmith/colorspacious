@@ -97,16 +97,16 @@ sRGB_linear_XYZ100_gold = [
 # The calculator at davengrace.com
 #    http://davengrace.com/dave/cspace/
 # has accurate XYZ100->sRGB and reasonable sRGB->XYZ100, but errorful
-# XYZ100<->CIELAB.
+# XYZ100<->CIELab.
 #
 # The calculator at
 #    http://www.brucelindbloom.com/index.html?ColorCalculator.html
-# has poor sRGB matrices, but accurate XYZ100<->CIELAB.
+# has poor sRGB matrices, but accurate XYZ100<->CIELab.
 # For matching conventions to ours, make sure to check "Scale XYZ100" and
 # "Scale Y", but not "Scale RGB".
 
 # Test values from http://www.brucelindbloom.com/index.html?ColorCalculator.html
-XYZ100_CIELAB_gold_D65 = [
+XYZ100_CIELab_gold_D65 = [
     ([10, 20, 30],
      [51.8372, -56.3591, -13.1812]),
     ([80, 90, 10],
@@ -124,14 +124,14 @@ XYZ100_CIELCh_gold_D65 = [
     ]
 
 # Test values from http://www.brucelindbloom.com/index.html?ColorCalculator.html
-XYZ100_CIELAB_gold_D50 = [
+XYZ100_CIELab_gold_D50 = [
     ([2.61219, 1.52732, 10.96471],  # XYZ100
-     [12.7806, 26.1147, -52.4348]), # CIELAB
+     [12.7806, 26.1147, -52.4348]), # CIELab
     ([2.39318, 2.01643, 1.64315],   # XYZ100
-     [15.5732, 9.7574, 0.2281]),    # CIELAB
+     [15.5732, 9.7574, 0.2281]),    # CIELab
     # make sure we have a test point with values below the linearity point
     ([0.5, 0.6, 0.4],               # XYZ100
-     [5.4198, -3.1711, 1.7953]),    # CIELAB
+     [5.4198, -3.1711, 1.7953]),    # CIELab
 ]
 
 XYZ100_CIELCh_gold_D50 = [
@@ -159,7 +159,7 @@ sRGB_xyY1_gold = [([1.012114, 0.554529, 0.567375],
 
 # http://davengrace.com/dave/cspace/
 # (More accurate than the Lindbloom calculator at least for this...)
-sRGB_CIELAB_gold_D65 = [
+sRGB_CIELab_gold_D65 = [
     ([0.2, 0.4, 0.6],
      [42.0099857768665, -0.147373964354935, -32.8445986139017]),
     ([0.1, 1.1, -0.1],

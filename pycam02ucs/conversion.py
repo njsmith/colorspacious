@@ -10,8 +10,8 @@ from .testing import check_conversion
 from .basics import (sRGB_to_sRGB_linear, sRGB_linear_to_sRGB,
                      sRGB_linear_to_XYZ100, XYZ100_to_sRGB_linear,
                      XYZ_to_xyY, xyY_to_XYZ,
-                     XYZ100_to_CIELAB, CIELAB_to_XYZ100,
-                     CIELAB_to_CIELCh, CIELCh_to_CIELAB)
+                     XYZ100_to_CIELab, CIELab_to_XYZ100,
+                     CIELab_to_CIELCh, CIELCh_to_CIELab)
 
 from .ciecam02 import CIECAM02Space
 from .luoetal2006 import (LuoEtAl2006UniformSpace,
@@ -67,18 +67,18 @@ EDGES += pair("XYZ100", "XYZ1",
               lambda XYZ100: np.asarray(XYZ100) / 100.,
               lambda XYZ1: np.asarray(XYZ1) * 100.0)
 
-EDGES += pair("XYZ100", {"name": "CIELAB", "XYZ100_w": ANY},
-              XYZ100_to_CIELAB, CIELAB_to_XYZ100)
+EDGES += pair("XYZ100", {"name": "CIELab", "XYZ100_w": ANY},
+              XYZ100_to_CIELab, CIELab_to_XYZ100)
 
-def _CIELAB_to_CIELCh(CIELAB, XYZ100_w):
-    return CIELAB_to_CIELCh(CIELAB)
+def _CIELab_to_CIELCh(CIELab, XYZ100_w):
+    return CIELab_to_CIELCh(CIELab)
 
-def _CIELCh_to_CIELAB(CIELCh, XYZ100_w):
-    return CIELCh_to_CIELAB(CIELCh)
+def _CIELCh_to_CIELab(CIELCh, XYZ100_w):
+    return CIELCh_to_CIELab(CIELCh)
 
-EDGES += pair({"name": "CIELAB", "XYZ100_w": MATCH},
+EDGES += pair({"name": "CIELab", "XYZ100_w": MATCH},
               {"name": "CIELCh", "XYZ100_w": MATCH},
-              _CIELAB_to_CIELCh, _CIELCh_to_CIELAB)
+              _CIELab_to_CIELCh, _CIELCh_to_CIELab)
 
 def _XYZ100_to_CIECAM02(XYZ100, ciecam02_space):
     return ciecam02_space.XYZ100_to_CIECAM02(XYZ100)
@@ -153,7 +153,7 @@ ALIASES = {
     "CAM02-LCD": CAM02LCD,
     "CAM02-SCD": CAM02SCD,
     "CIECAM02": CIECAM02Space.sRGB,
-    "CIELAB": {"name": "CIELAB", "XYZ100_w": CIECAM02Space.sRGB.XYZ100_w},
+    "CIELab": {"name": "CIELab", "XYZ100_w": CIECAM02Space.sRGB.XYZ100_w},
     "CIELCh": {"name": "CIELCh", "XYZ100_w": CIECAM02Space.sRGB.XYZ100_w},
 }
 
@@ -224,19 +224,19 @@ def test_convert_cspace_long_paths():
                          a_min=0, a_max=1,
                          b_min=0, b_max=255)
 
-    from .gold_values import sRGB_CIELAB_gold_D65
-    check_convert_cspace("sRGB", "CIELAB", sRGB_CIELAB_gold_D65,
+    from .gold_values import sRGB_CIELab_gold_D65
+    check_convert_cspace("sRGB", "CIELab", sRGB_CIELab_gold_D65,
                          a_min=0, a_max=1,
                          b_min=[10, -30, 30], b_max=[90, 30, 30],
                          # Ridiculously low precision, but both Lindbloom and
                          # Grace's calculators have rounding errors in both the
-                         # CIELAB coefficients and the sRGB matrices.
+                         # CIELab coefficients and the sRGB matrices.
                          gold_rtol=1.5e-2)
 
-    # Makes sure that CIELAB conversions are sensitive to whitepoint
-    from .gold_values import XYZ100_CIELAB_gold_D50
-    check_convert_cspace("XYZ100", {"name": "CIELAB", "XYZ100_w": "D50"},
-                         XYZ100_CIELAB_gold_D50,
+    # Makes sure that CIELab conversions are sensitive to whitepoint
+    from .gold_values import XYZ100_CIELab_gold_D50
+    check_convert_cspace("XYZ100", {"name": "CIELab", "XYZ100_w": "D50"},
+                         XYZ100_CIELab_gold_D50,
                          b_min=[10, -30, 30], b_max=[90, 30, 30])
 
     from .gold_values import XYZ100_CIELCh_gold_D65

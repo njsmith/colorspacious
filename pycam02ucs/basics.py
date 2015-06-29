@@ -2,7 +2,7 @@
 # Copyright (C) 2014-2015 Nathaniel Smith <njs@pobox.com>
 # See file LICENSE.txt for license information.
 
-# Basic colorspaces: conversions between sRGB, XYZ, xyY, CIELAB
+# Basic colorspaces: conversions between sRGB, XYZ, xyY, CIELab
 
 import numpy as np
 
@@ -134,7 +134,7 @@ def _f(t):
     out[~linear_portion] = t[~linear_portion] ** (1. / 3)
     return out
 
-def XYZ100_to_CIELAB(XYZ100, XYZ100_w):
+def XYZ100_to_CIELab(XYZ100, XYZ100_w):
     XYZ100 = np.asarray(XYZ100, dtype=float)
     XYZ100_w = as_XYZ100_w(XYZ100_w)
 
@@ -151,13 +151,13 @@ def _finv(t):
                      t ** 3])
     return out
 
-def CIELAB_to_XYZ100(CIELAB, XYZ100_w):
-    CIELAB = np.asarray(CIELAB, dtype=float)
+def CIELab_to_XYZ100(CIELab, XYZ100_w):
+    CIELab = np.asarray(CIELab, dtype=float)
     XYZ100_w = as_XYZ100_w(XYZ100_w)
 
-    L = CIELAB[..., 0]
-    a = CIELAB[..., 1]
-    b = CIELAB[..., 2]
+    L = CIELab[..., 0]
+    a = CIELab[..., 1]
+    b = CIELab[..., 2]
     X_w = XYZ100_w[..., 0]
     Y_w = XYZ100_w[..., 1]
     Z_w = XYZ100_w[..., 2]
@@ -169,54 +169,54 @@ def CIELAB_to_XYZ100(CIELAB, XYZ100_w):
 
     return stacklast(X, Y, Z)
 
-def test_XYZ100_to_CIELAB():
-    from .gold_values import XYZ100_CIELAB_gold_D65, XYZ100_CIELAB_gold_D50
+def test_XYZ100_to_CIELab():
+    from .gold_values import XYZ100_CIELab_gold_D65, XYZ100_CIELab_gold_D50
 
-    check_conversion(XYZ100_to_CIELAB, CIELAB_to_XYZ100,
-                     XYZ100_CIELAB_gold_D65,
+    check_conversion(XYZ100_to_CIELab, CIELab_to_XYZ100,
+                     XYZ100_CIELab_gold_D65,
                      # Stick to randomized values in the mid-range to avoid
                      # hitting negative luminances
                      b_min=[10, -30, -30], b_max=[90, 30, 30],
                      XYZ100_w="D65")
 
-    check_conversion(XYZ100_to_CIELAB, CIELAB_to_XYZ100,
-                     XYZ100_CIELAB_gold_D50,
+    check_conversion(XYZ100_to_CIELab, CIELab_to_XYZ100,
+                     XYZ100_CIELab_gold_D50,
                      # Stick to randomized values in the mid-range to avoid
                      # hitting negative luminances
                      b_min=[10, -30, -30], b_max=[90, 30, 30],
                      XYZ100_w="D50")
 
-    XYZ100_1 = np.asarray(XYZ100_CIELAB_gold_D65[0][0])
-    CIELAB_1 = np.asarray(XYZ100_CIELAB_gold_D65[0][1])
+    XYZ100_1 = np.asarray(XYZ100_CIELab_gold_D65[0][0])
+    CIELab_1 = np.asarray(XYZ100_CIELab_gold_D65[0][1])
 
-    XYZ100_2 = np.asarray(XYZ100_CIELAB_gold_D50[1][0])
-    CIELAB_2 = np.asarray(XYZ100_CIELAB_gold_D50[1][1])
+    XYZ100_2 = np.asarray(XYZ100_CIELab_gold_D50[1][0])
+    CIELab_2 = np.asarray(XYZ100_CIELab_gold_D50[1][1])
 
     XYZ100_mixed = np.concatenate((XYZ100_1[np.newaxis, :],
                                    XYZ100_2[np.newaxis, :]))
-    CIELAB_mixed = np.concatenate((CIELAB_1[np.newaxis, :],
-                                   CIELAB_2[np.newaxis, :]))
+    CIELab_mixed = np.concatenate((CIELab_1[np.newaxis, :],
+                                   CIELab_2[np.newaxis, :]))
 
     XYZ100_w_mixed = np.row_stack((as_XYZ100_w("D65"), as_XYZ100_w("D50")))
 
-    assert np.allclose(XYZ100_to_CIELAB(XYZ100_mixed, XYZ100_w=XYZ100_w_mixed),
-                       CIELAB_mixed, rtol=0.001)
-    assert np.allclose(CIELAB_to_XYZ100(CIELAB_mixed, XYZ100_w=XYZ100_w_mixed),
+    assert np.allclose(XYZ100_to_CIELab(XYZ100_mixed, XYZ100_w=XYZ100_w_mixed),
+                       CIELab_mixed, rtol=0.001)
+    assert np.allclose(CIELab_to_XYZ100(CIELab_mixed, XYZ100_w=XYZ100_w_mixed),
                        XYZ100_mixed, rtol=0.001)
 
 ################################################################
-# CIELAB <-> CIELCh
+# CIELab <-> CIELCh
 ################################################################
 
-def CIELAB_to_CIELCh(CIELAB):
-    CIELAB = np.asarray(CIELAB)
-    L = CIELAB[..., 0]
-    a = CIELAB[..., 1]
-    b = CIELAB[..., 2]
+def CIELab_to_CIELCh(CIELab):
+    CIELab = np.asarray(CIELab)
+    L = CIELab[..., 0]
+    a = CIELab[..., 1]
+    b = CIELab[..., 2]
     C, h = color_cart2polar(a, b)
     return stacklast(L, C, h)
 
-def CIELCh_to_CIELAB(CIELCh):
+def CIELCh_to_CIELab(CIELCh):
     CIELCh = np.asarray(CIELCh)
     L = CIELCh[..., 0]
     C = CIELCh[..., 1]

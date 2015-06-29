@@ -9,8 +9,7 @@ from .util import stacklast
 from .testing import check_conversion
 from .basics import (sRGB_to_sRGB_linear, sRGB_linear_to_sRGB,
                      sRGB_linear_to_XYZ100, XYZ100_to_sRGB_linear,
-                     XYZ100_to_xyY100, xyY100_to_XYZ100,
-                     XYZ100_to_CIELAB, CIELAB_to_XYZ100)
+                     XYZ_to_xyY, xyY_to_XYZ,
 
 from .ciecam02 import CIECAM02Space
 from .luoetal2006 import (LuoEtAl2006UniformSpace,
@@ -57,17 +56,14 @@ EDGES += pair({"name": "sRGB-linear+CVD", "cvd_type": ANY, "severity": ANY},
 
 EDGES += pair("sRGB", "sRGB-linear", sRGB_to_sRGB_linear, sRGB_linear_to_sRGB)
 
+EDGES += pair("XYZ100", "xyY100", XYZ_to_xyY, xyY_to_XYZ)
+EDGES += pair("XYZ1", "xyY1", XYZ_to_xyY, xyY_to_XYZ)
+
 EDGES += pair("sRGB-linear", "XYZ100", sRGB_linear_to_XYZ100, XYZ100_to_sRGB_linear)
 
 EDGES += pair("XYZ100", "XYZ1",
               lambda XYZ100: np.asarray(XYZ100) / 100.,
               lambda XYZ1: np.asarray(XYZ1) * 100.0)
-
-EDGES += pair("XYZ100", "xyY100", XYZ100_to_xyY100, xyY100_to_XYZ100)
-
-EDGES += pair("xyY100", "xyY1",
-              lambda xyY100: np.asarray(xyY100) / [1.0, 1.0, 100.0],
-              lambda xyY1: np.asarray(xyY1) * [1.0, 1.0, 100.0])
 
 EDGES += pair("XYZ100", {"name": "CIELAB", "XYZ100_w": ANY},
               XYZ100_to_CIELAB, CIELAB_to_XYZ100)
@@ -133,8 +129,12 @@ EDGES += pair({"name": "CIECAM02-subset",
               _JMh_to_LuoEtAl2006, _LuoEtAl2006_to_JMh)
 
 GRAPH = TransformGraph(EDGES,
+                       # Stuff that should go on the same row of the generated
+                       # graphviz plot
                        [["sRGB", "sRGB+CVD"],
-                        ["sRGB-linear", "sRGB-linear+CVD"]])
+                        ["sRGB-linear", "sRGB-linear+CVD"],
+                        ["XYZ100", "XYZ1"],
+                    ])
 
 ALIASES = {
     "CAM02-UCS": CAM02UCS,

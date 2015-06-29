@@ -84,20 +84,22 @@ def test_sRGB_linear_to_XYZ100():
                       a_max=1, b_max=100)
 
 ################################################################
-# XYZ100 <-> xyY100
+# XYZ <-> xyY
 ################################################################
 
-def XYZ100_to_xyY100(XYZ100):
-    XYZ100 = np.asarray(XYZ100, dtype=float)
-    norm = np.sum(XYZ100, axis=-1, keepdims=True)
-    xy = XYZ100[..., :2] / norm
-    return np.concatenate((xy, XYZ100[..., 1:2]), axis=-1)
+# These functions work identically for both the 0-100 and 0-1 versions of
+# XYZ/xyY.
+def XYZ_to_xyY(XYZ):
+    XYZ = np.asarray(XYZ, dtype=float)
+    norm = np.sum(XYZ, axis=-1, keepdims=True)
+    xy = XYZ[..., :2] / norm
+    return np.concatenate((xy, XYZ[..., 1:2]), axis=-1)
 
-def xyY100_to_XYZ100(xyY100):
-    xyY100 = np.asarray(xyY100, dtype=float)
-    x = xyY100[..., 0]
-    y = xyY100[..., 1]
-    Y = xyY100[..., 2]
+def xyY_to_XYZ(xyY):
+    xyY = np.asarray(xyY, dtype=float)
+    x = xyY[..., 0]
+    y = xyY[..., 1]
+    Y = xyY[..., 2]
     X = Y / y * x
     Z = Y / y * (1 - x - y)
     return stacklast(X, Y, Z)
@@ -107,9 +109,17 @@ _XYZ100_to_xyY100_test_vectors = [
     ([99, 98,  3], [99. / 200, 98. / 200, 98]),
     ]
 
-def test_XYZ100_to_xyY100():
-    check_conversion(XYZ100_to_xyY100, xyY100_to_XYZ100,
-                      _XYZ100_to_xyY100_test_vectors, b_max=[1, 1, 100])
+_XYZ1_to_xyY1_test_vectors = [
+    ([0.10, 0.20, 0.30], [ 0.10 / 0.60,  0.20 / 0.60, 0.20]),
+    ([0.99, 0.98,  0.3], [0.99 / 2.00, 0.98 / 2.00, 0.98]),
+    ]
+
+def test_XYZ_to_xyY():
+    check_conversion(XYZ_to_xyY, xyY_to_XYZ,
+                     _XYZ100_to_xyY100_test_vectors, b_max=[1, 1, 100])
+
+    check_conversion(XYZ_to_xyY, xyY_to_XYZ,
+                     _XYZ1_to_xyY1_test_vectors, b_max=[1, 1, 1])
 
 ################################################################
 # XYZ100 <-> CIEL*a*b*

@@ -1,7 +1,10 @@
 # This file is part of pycam02ucs
 # Copyright (C) 2014 Nathaniel Smith <njs@pobox.com>
 # See file LICENSE.txt for license information.
+
 import numpy as np
+
+from .util import stacklast
 
 class LuoEtAl2006UniformSpace(object):
     def __init__(self, KL, c1, c2):
@@ -20,7 +23,7 @@ class LuoEtAl2006UniformSpace(object):
         h_rad = np.deg2rad(h)
         ap = Mp * np.cos(h_rad)
         bp = Mp * np.sin(h_rad)
-        return np.array([Jp, ap, bp]).T
+        return stacklast(Jp, ap, bp)
 
     def Jpapbp_to_JMh(self, Jpapbp):
         Jpapbp = np.asarray(Jpapbp)
@@ -43,7 +46,7 @@ class LuoEtAl2006UniformSpace(object):
         np.testing.assert_allclose(Mp, Mpp)
         h = np.rad2deg(h_rad) % 360
         M = (np.exp(self.c2*Mp) - 1) / self.c2
-        return np.array([J, M, h]).T
+        return stacklast(J, M, h)
 
 CAM02UCS = LuoEtAl2006UniformSpace(1.00, 0.007, 0.0228)
 CAM02LCD = LuoEtAl2006UniformSpace(1.24, 0.007, 0.0363)

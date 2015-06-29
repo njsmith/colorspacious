@@ -6,6 +6,7 @@
 
 import numpy as np
 
+from .util import stacklast
 from .illuminants import as_XYZ100_w
 from .testing import check_conversion
 
@@ -99,10 +100,7 @@ def xyY100_to_XYZ100(xyY100):
     Y = xyY100[..., 2]
     X = Y / y * x
     Z = Y / y * (1 - x - y)
-    return np.concatenate((X[..., np.newaxis],
-                           Y[..., np.newaxis],
-                           Z[..., np.newaxis]),
-                          axis=-1)
+    return stacklast(X, Y, Z)
 
 _XYZ100_to_xyY100_test_vectors = [
     ([10, 20, 30], [ 10. / 60,  20. / 60, 20]),
@@ -159,10 +157,7 @@ def CIELAB_to_XYZ100(CIELAB, XYZ100_w):
     Y = Y_w * _finv(l_piece)
     Z = Z_w * _finv(l_piece - 1. / 200 * b)
 
-    return np.concatenate((X[..., np.newaxis],
-                           Y[..., np.newaxis],
-                           Z[..., np.newaxis]),
-                          axis=-1)
+    return stacklast(X, Y, Z)
 
 def test_XYZ100_to_CIELAB():
     from .gold_values import XYZ100_CIELAB_gold_D65, XYZ100_CIELAB_gold_D50
@@ -181,16 +176,17 @@ def test_XYZ100_to_CIELAB():
                      b_min=[10, -30, -30], b_max=[90, 30, 30],
                      XYZ100_w="D50")
 
-    XYZ1001 = np.asarray(XYZ100_CIELAB_gold_D65[0][0])
-    CIELAB1 = np.asarray(XYZ100_CIELAB_gold_D65[0][1])
+    XYZ100_1 = np.asarray(XYZ100_CIELAB_gold_D65[0][0])
+    CIELAB_1 = np.asarray(XYZ100_CIELAB_gold_D65[0][1])
 
-    XYZ1002 = np.asarray(XYZ100_CIELAB_gold_D50[1][0])
-    CIELAB2 = np.asarray(XYZ100_CIELAB_gold_D50[1][1])
+    XYZ100_2 = np.asarray(XYZ100_CIELAB_gold_D50[1][0])
+    CIELAB_2 = np.asarray(XYZ100_CIELAB_gold_D50[1][1])
 
-    XYZ100_mixed = np.concatenate((XYZ1001[np.newaxis, :],
-                                   XYZ1002[np.newaxis, :]))
-    CIELAB_mixed = np.concatenate((CIELAB1[np.newaxis, :],
-                                   CIELAB2[np.newaxis, :]))
+    XYZ100_mixed = np.concatenate((XYZ100_1[np.newaxis, :],
+                                   XYZ100_2[np.newaxis, :]))
+    CIELAB_mixed = np.concatenate((CIELAB_1[np.newaxis, :],
+                                   CIELAB_2[np.newaxis, :]))
+
     XYZ100_w_mixed = np.row_stack((as_XYZ100_w("D65"), as_XYZ100_w("D50")))
 
     assert np.allclose(XYZ100_to_CIELAB(XYZ100_mixed, XYZ100_w=XYZ100_w_mixed),

@@ -27,8 +27,8 @@ def machado_et_al_2009_matrix(cvd_type, severity):
     high = low + 10
     assert low <= severity <= high
 
-    low_matrix = np.asarray(MATRICES[type][low])
-    high_matrix = np.asarray(MATRICES[type][high])
+    low_matrix = np.asarray(MACHADO_ET_AL_MATRICES[cvd_type][low])
+    high_matrix = np.asarray(MACHADO_ET_AL_MATRICES[cvd_type][high])
     return ((1 - fraction / 10.0) * low_matrix
             + fraction / 10.0 * high_matrix)
 
@@ -50,7 +50,7 @@ def test_machado_et_al_2009_matrix():
         0.31 * deuter60 + (1 - 0.31) * deuter50)
 
 
-MATRICES = {
+MACHADO_ET_AL_MATRICES = {
     "protanomaly": {
       0: [
           [ 1.000000,  0.000000, -0.000000],

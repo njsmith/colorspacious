@@ -268,11 +268,6 @@ def try_extend_path(path, edge):
     _fill_values_from(new_path_end, MATCH, path.nodes[-1])
     # Add any new END values
     _replace_values(new_path_end, {ANY: END})
-    # Give up if there are any remaining END placeholders that dead-end
-    # (Invariant: if nodes[i][k] is END, then nodes[i+j][k] must also be END.)
-    for k, v in path.nodes[-1].items():
-        if v is END and new_path_end.get(k) is not END:
-            return None
     return Path(path.nodes + [new_path_end],
                 path.transforms + [edge.transform])
 

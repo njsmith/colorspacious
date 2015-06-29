@@ -601,9 +601,12 @@ def test_Transform():
 ################################################################
 
 class TransformGraph(object):
-    def __init__(self, edges):
+    def __init__(self, edges, rank_constraints=[]):
+        # This is what's used for actual calculations
         self._shortest_paths = pairwise_shortest_paths(edges)
-        # Used only for the dot output
+
+        # All the rest is used only for the dot output
+        self._rank_constraints = rank_constraints
         self._edges = edges
         self._nodes = []
         seen_names = set()
@@ -654,4 +657,8 @@ class TransformGraph(object):
             # taillabel=<...>, headlabel=<...>, ...
             f.write("  \"%s\" -> \"%s\"\n"
                     % (edge.start["name"], edge.end["name"]))
+        for rank_constraint in self._rank_constraints:
+            f.write("  {rank=same; "
+                    + ", ".join(["\"%s\"" % (c,) for c in rank_constraint])
+                    + "}\n")
         f.write("}\n")

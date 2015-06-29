@@ -7,7 +7,7 @@
 import numpy as np
 
 # Matrices for simulating anomalous color vision from:
-#   Machado, Oliveira, & Fernandes, A Physiologically-based Model for
+#   Machado, Oliveira, & Fernandes (2009). A Physiologically-based Model for
 #   Simulation of Color Vision Deficiency. doi: 10.1109/TVCG.2009.113
 #
 #   http://www.inf.ufrgs.br/~oliveira/pubs_files/CVD_Simulation/CVD_Simulation.html
@@ -18,7 +18,7 @@ import numpy as np
 # on the tritanomaly spectrum (<0.01% of people) or have other more exotic
 # anomalies.
 
-def machado_et_al_2009_matrix(type, severity):
+def machado_et_al_2009_matrix(cvd_type, severity):
     assert 0 <= severity <= 100
 
     fraction = severity % 10

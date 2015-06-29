@@ -14,6 +14,7 @@ from .basics import (sRGB_to_sRGB_linear, sRGB_linear_to_sRGB,
 from .ciecam02 import CIECAM02Space
 from .luoetal2006 import (LuoEtAl2006UniformSpace,
                           CAM02UCS, CAM02LCD, CAM02SCD)
+from .cvd import machado_et_al_2009_matrix
 
 from .transform_graph import Edge, MATCH, ANY, TransformGraph
 
@@ -33,6 +34,25 @@ def pair(a, b, a2b, b2a):
 EDGES += pair("sRGB", "sRGB255",
               lambda sRGB: np.asarray(sRGB) / 255.0,
               lambda sRGB255: np.asarray(sRGB255) * 255.0)
+
+def _apply_rgb_mat(mat, rgb):
+    return np.einsum("...ij,...j->...i", mat, rgb)
+
+def _CVD_forward(sRGB, cvd_type, severity):
+    mat = machado_et_al_2009_matrix(cvd_type, severity)
+    return _apply_rgb_mat(mat, sRGB)
+
+def _CVD_inverse(sRGB, cvd_type, severity):
+    forward = machado_et_al_2009_matrix(cvd_type, severity)
+    return _apply_rgb_mat(np.linalg.inv(forward), sRGB)
+
+EDGES += pair({"name": "sRGB+CVD", "cvd_type": MATCH, "severity": MATCH},
+              {"name": "sRGB-linear+CVD", "cvd_type": MATCH, "severity": MATCH},
+              sRGB_to_sRGB_linear, sRGB_linear_to_sRGB)
+
+EDGES += pair({"name": "sRGB-linear+CVD", "cvd_type": ANY, "severity": ANY},
+              "sRGB-linear",
+              _CVD_forward, _CVD_inverse)
 
 EDGES += pair("sRGB", "sRGB-linear", sRGB_to_sRGB_linear, sRGB_linear_to_sRGB)
 
@@ -114,7 +134,9 @@ EDGES += pair({"name": "CIECAM02-subset",
                  "luoetal2006_space": ANY},
               _JMh_to_LuoEtAl2006, _LuoEtAl2006_to_JMh)
 
-GRAPH = TransformGraph(EDGES)
+GRAPH = TransformGraph(EDGES,
+                       [["sRGB", "sRGB+CVD"],
+                        ["sRGB-linear", "sRGB-linear+CVD"]])
 
 ALIASES = {
     "CAM02-UCS": CAM02UCS,

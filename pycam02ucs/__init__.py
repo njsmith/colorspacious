@@ -4,7 +4,9 @@
 
 from .illuminants import standard_illuminant_XYZ100, as_XYZ100_w
 
-from .ciecam02 import *
+from .cvd import machado_et_al_2009_matrix
+
+from .ciecam02 import CIECAM02Space, CIECAM02Surround, NegativeAError, JChQMsH
 
 from .luoetal2006 import LuoEtAl2006UniformSpace, CAM02UCS, CAM02SCD, CAM02LCD
 

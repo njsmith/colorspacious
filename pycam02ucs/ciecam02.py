@@ -10,7 +10,6 @@ import numpy as np
 
 from .illuminants import as_XYZ100_w
 
-# These all get re-exported at the package level
 __all__ = [
     "CIECAM02Surround", "CIECAM02Space", "NegativeAError",
     "JChQMsH",

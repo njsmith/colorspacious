@@ -10,92 +10,49 @@ import os.path
 
 import numpy as np
 
-# Most of this file doesn't actually need matpotlib, and I'm too lazy ATM to
-# get matplotlib installed on travis. So this lets the travis build go
-# through.
-try:
-    import matplotlib.pyplot as plt
-    import mpl_toolkits.mplot3d
-    from matplotlib.gridspec import GridSpec
-    from matplotlib.widgets import Button, Slider
-    import matplotlib.colors
-    from matplotlib.colors import LinearSegmentedColormap
-except ImportError:
-    print("\nWarning! could not import matplotlib\n")
-    pass
+import matplotlib.pyplot as plt
+import mpl_toolkits.mplot3d
+from matplotlib.gridspec import GridSpec
+from matplotlib.widgets import Button, Slider
+import matplotlib.colors
+from matplotlib.colors import LinearSegmentedColormap
 
-from pycam02ucs import ViewingConditions
-from pycam02ucs.cam02ucs import UCS_space, SCD_space, LCD_space
+from pycam02ucs import convert_cspace, cspace_converter
 from pycam02ucs.srgb import sRGB_to_XYZ, XYZ_to_sRGB
 from pycam02ucs.cm.minimvc import Trigger
 
 # Our preferred space (mostly here so we can easily tweak it when curious)
-UNIFORM_SPACE = UCS_space
+UNIFORM_SPACE = "CAM02-UCS"
 
-def _sRGB_to_CIECAM02(RGB):
-    XYZ = sRGB_to_XYZ(RGB)
-    return ViewingConditions.sRGB.XYZ_to_CIECAM02(XYZ)
+_sRGB1_to_JCh = cspace_converter("sRGB1", "JCh")
+_JCh_to_sRGB1 = cspace_converter("JCh", "sRGB1")
+def to_greyscale(sRGB1):
+    JCh = _sRGB1_to_JCh(sRGB1)
+    JCh[..., 1] = 0
+    return _JCh_to_sRGB1(JCh)
 
-def _CIECAM02_to_JKapbp(ciecam02):
-    JMh = np.column_stack((ciecam02.J, ciecam02.M, ciecam02.h))
-    return UNIFORM_SPACE.JMh_to_JKapbp(JMh)
+_sRGB1_to_uniform = cspace_converter("sRGB1", UNIFORM_SPACE)
+_uniform_to_sRGB1 = cspace_converter(UNIFORM_SPACE, "sRGB1")
 
-
-def _JKapbp_to_JMh(JKapbp):
-    return UNIFORM_SPACE.JKapbp_to_JMh(JKapbp)
-
-
-def _JMh_to_sRGB(JMh):
-    XYZ = ViewingConditions.sRGB.CIECAM02_to_XYZ(J=JMh[..., 0],
-                                                 M=JMh[..., 1],
-                                                 h=JMh[..., 2])
-    return XYZ_to_sRGB(XYZ)
-
+_deuter50_space = {"name": "sRGB1+CVD",
+                   "cvd_type": "deuteranomaly",
+                   "severity": 50}
+_deuter50_to_sRGB1 = cspace_converter(_deuter50_space, "sRGB1")
+_deuter100_space = {"name": "sRGB1+CVD",
+                    "cvd_type": "deuteranomaly",
+                    "severity": 100}
+_deuter100_to_sRGB1 = cspace_converter(_deuter100_space, "sRGB1")
+_prot50_space = {"name": "sRGB1+CVD",
+                 "cvd_type": "protanomaly",
+                 "severity": 50}
+_prot50_to_sRGB1 = cspace_converter(_prot50_space, "sRGB1")
+_prot100_space = {"name": "sRGB1+CVD",
+                  "cvd_type": "protanomaly",
+                  "severity": 100}
+_prot100_to_sRGB1 = cspace_converter(_prot100_space, "sRGB1")
 
 def _show_cmap(ax, rgb):
     ax.imshow(rgb[np.newaxis, ...], aspect="auto")
-
-# Matrices for simulating anomalous color vision from:
-#   Machado, Oliveira, & Fernandes, A Physiologically-based Model for
-#   Simulation of Color Vision Deficiency. doi: 10.1109/TVCG.2009.113
-#
-#   http://www.inf.ufrgs.br/~oliveira/pubs_files/CVD_Simulation/CVD_Simulation.html
-# Python code with pre-typed matrices:
-#   http://registry.gimp.org/files/color_vision_deficiency.py_1.txt
-#
-# The 05 variables are "0.5" strength (moderate anomaly), the 10 variables are
-# "1.0" strength, i.e., true dichromacy.
-#
-# Most people with anomalous color vision (~5% of all men) fall somewhere on
-# the deuteranomaly spectrum. A minority (~1% of all men) are either fully
-# deuteranopic or fall on the protanomaly spectrum. A much smaller number fall
-# on the tritanomaly spectrum (<0.1% of people) or have other more exotic
-# anomalies.
-
-PROTANOMALY_05 = [[0.458064, 0.679578, -0.137642],
-                  [0.092785, 0.846313, 0.060902],
-                  [-0.007494, -0.016807, 1.024301]]
-
-DEUTERANOMALY_05 = [[0.547494, 0.607765, -0.155259],
-                    [0.181692, 0.781742, 0.036566],
-                    [-0.010410, 0.027275, 0.983136]]
-
-TRITANOMALY_05 = [[1.017277, 0.027029, -0.044306],
-                  [-0.006113, 0.958479, 0.047634],
-                  [0.006379, 0.248708, 0.744913]]
-
-PROTANOMALY_10 = [[0.152286, 1.052583, -0.204868],
-                  [0.114503, 0.786281, 0.099216],
-                  [-0.003882, -0.048116, 1.051998]]
-
-DEUTERANOMALY_10 = [[0.367322, 0.860646, -0.227968],
-                    [0.280085, 0.672501, 0.047413],
-                    [-0.011820, 0.042940, 0.968881]]
-
-TRITANOMALY_10 = [[1.255528, -0.076749, -0.178779],
-                  [-0.078411, 0.930809, 0.147602],
-                  [0.004733, 0.691367, 0.303900]]
-
 
 def _apply_rgb_mat(mat, rgb):
     return np.clip(np.einsum("...ij,...j->...i", mat, rgb), 0, 1)
@@ -105,16 +62,16 @@ AP_LIM = (-38, 46)
 # b' goes from -46.5 to 42
 BP_LIM = (-47, 43)
 # J'/K goes from 0 to 100
-JK_LIM = (-1, 101)
+JP_LIM = (-1, 101)
 
 
-def _setup_JKapbp_axis(ax):
+def _setup_Jpapbp_axis(ax):
     ax.set_xlabel("a' (green -> red)")
     ax.set_ylabel("b' (blue -> yellow)")
     ax.set_zlabel("J'/K (white -> black)")
     ax.set_xlim(*AP_LIM)
     ax.set_ylim(*BP_LIM)
-    ax.set_zlim(*JK_LIM)
+    ax.set_zlim(*JP_LIM)
 
 
 # Adapt a matplotlib colormap to a linearly transformed version -- useful for
@@ -123,18 +80,12 @@ def _setup_JKapbp_axis(ax):
 # ignore its implementation entirely.
 class TransformedCMap(matplotlib.colors.Colormap):
     def __init__(self, transform, base_cmap):
-        self.transform = np.asarray(transform)
-        assert self.transform.shape[0] == self.transform.shape[1]
-        # Convert RGB transformation matrix to RGBA transformation matrix
-        if self.transform.shape == (3, 3):
-            t = np.eye(4)
-            t[:3, :3] = self.transform
-            self.transform = t
+        self.transform = transform
         self.base_cmap = base_cmap
 
     def __call__(self, *args, **kwargs):
         fx = self.base_cmap(*args, **kwargs)
-        tfx = _apply_rgb_mat(self.transform, fx)
+        tfx = self.transform(fx)
         return tfx
 
     def set_bad(self, *args, **kwargs):
@@ -217,29 +168,25 @@ class viscm(object):
                     verticalalignment="bottom",
                     transform=ax.transAxes)
 
+        Jpapbp = _sRGB1_to_uniform(RGB)
+
         ax = axes['deltas']
-        local_deltas = N * UNIFORM_SPACE.deltaEp_sRGB(RGB[:-1, :], RGB[1:, :])
+        local_deltas = N * np.sqrt(np.sum((Jpapbp[:-1, :] - Jpapbp[1:, :]) ** 2, axis=-1))
         ax.plot(x[1:], local_deltas)
         arclength = np.sum(local_deltas) / N
         label(ax, "Perceptual deltas (total: %0.2f)" % (arclength,))
         ax.set_ylim(0, ax.get_ylim()[1])
         ax.get_xaxis().set_visible(False)
 
-        ciecam02 = _sRGB_to_CIECAM02(RGB)
-        JKapbp = _CIECAM02_to_JKapbp(ciecam02)
-
         ax = axes['cmap-greyscale']
-        grey_RGB = _JMh_to_sRGB(np.column_stack((ciecam02.J,
-                                                 np.zeros_like(ciecam02.M),
-                                                 ciecam02.h)))
-        _show_cmap(ax, grey_RGB)
+        _show_cmap(ax, to_greyscale(RGB))
         ax.set_title("Black-and-white printed")
         ax.get_xaxis().set_visible(False)
         ax.get_yaxis().set_visible(False)
 
         ax = axes['lightness-deltas']
         ax.axhline(0, linestyle="--", color="grey")
-        lightness_deltas = N * np.diff(JKapbp[:, 0])
+        lightness_deltas = N * np.diff(Jpapbp[:, 0])
         ax.plot(x[1:], lightness_deltas)
         label(ax,
               "Perceptual lightness deltas (total: %0.2f)"
@@ -261,24 +208,32 @@ class viscm(object):
         # label(ax, "Hue angle (h)")
         # ax.set_ylim(0, 360)
 
-        def anom(ax, mat, name):
-            _show_cmap(ax, _apply_rgb_mat(mat, RGB))
+        def anom(ax, converter, name):
+            _show_cmap(ax, np.clip(converter(RGB), 0, 1))
             label(ax, name)
             ax.get_xaxis().set_visible(False)
             ax.get_yaxis().set_visible(False)
 
-        anom(axes['deuteranomaly'], DEUTERANOMALY_05, "Moderate deuteranomaly")
-        anom(axes['deuteranopia'], DEUTERANOMALY_10, "Complete deuteranopia")
+        anom(axes['deuteranomaly'],
+             _deuter50_to_sRGB1,
+             "Moderate deuteranomaly")
+        anom(axes['deuteranopia'],
+             _deuter100_to_sRGB1,
+             "Complete deuteranopia")
 
-        anom(axes['protanomaly'], PROTANOMALY_05, "Moderate protanomaly")
-        anom(axes['protanopia'], PROTANOMALY_10, "Complete protanopia")
+        anom(axes['protanomaly'],
+             _prot50_to_sRGB1,
+             "Moderate protanomaly")
+        anom(axes['protanopia'],
+             _prot100_to_sRGB1,
+             "Complete protanopia")
 
         ax = axes['gamut']
-        ax.plot(JKapbp[:, 1], JKapbp[:, 2], JKapbp[:, 0])
-        JKapbp_dots = _CIECAM02_to_JKapbp(_sRGB_to_CIECAM02(RGB_dots))
-        ax.scatter(JKapbp_dots[:, 1],
-                   JKapbp_dots[:, 2],
-                   JKapbp_dots[:, 0],
+        ax.plot(Jpapbp[:, 1], Jpapbp[:, 2], Jpapbp[:, 0])
+        Jpapbp_dots = _sRGB1_to_uniform(RGB_dots)
+        ax.scatter(Jpapbp_dots[:, 1],
+                   Jpapbp_dots[:, 2],
+                   Jpapbp_dots[:, 0],
                    c=RGB_dots[:, :],
                    s=80)
 
@@ -299,7 +254,7 @@ class viscm(object):
             plt.draw()
         self.gamut_patch_toggle.on_clicked(toggle)
 
-        _setup_JKapbp_axis(ax)
+        _setup_Jpapbp_axis(ax)
 
         images = []
         image_args = []
@@ -322,7 +277,13 @@ class viscm(object):
         images.append(z)
         image_args.append({})
 
-        deuter_cm = TransformedCMap(DEUTERANOMALY_05, cm)
+        def _deuter_transform(RGBA):
+            # clipping, alpha handling
+            RGB = RGBA[..., :3]
+            RGB = np.clip(_deuter50_to_sRGB1(RGB), 0, 1)
+            return np.concatenate((RGB, RGBA[..., 3:]), axis=-1)
+        deuter_cm = TransformedCMap(_deuter_transform, cm)
+
         for i, (image, args) in enumerate(zip(images, image_args)):
             ax = axes['image%i' % (i,)]
             ax.imshow(image, cmap=cm, **args)
@@ -371,27 +332,25 @@ def sRGB_gamut_patch(resolution=20):
     # work around colorspace transform bugginess in handling high-dim
     # arrays
     sRGB_quads_2d = sRGB_quads.reshape((-1, 3))
-    CIECAM02_quads_2d = _sRGB_to_CIECAM02(sRGB_quads_2d)
-    JKapbp_quads_2d = _CIECAM02_to_JKapbp(CIECAM02_quads_2d)
-    JKapbp_quads = JKapbp_quads_2d.reshape((-1, 4, 3))
+    Jpapbp_quads_2d = _sRGB1_to_uniform(sRGB_quads_2d)
+    Jpapbp_quads = Jpapbp_quads_2d.reshape((-1, 4, 3))
     gamut_patch = mpl_toolkits.mplot3d.art3d.Poly3DCollection(
-        JKapbp_quads[:, :, [1, 2, 0]])
+        Jpapbp_quads[:, :, [1, 2, 0]])
     gamut_patch.set_facecolor(sRGB_values)
     gamut_patch.set_edgecolor(sRGB_values)
     return gamut_patch
 
 
-def sRGB_gamut_JK_slice(JK,
+def sRGB_gamut_Jp_slice(Jp,
                         ap_lim=(-50, 50), bp_lim=(-50, 50), resolution=200):
     ap_grid, bp_grid = np.mgrid[ap_lim[0] : ap_lim[1] : resolution * 1j,
                                 bp_lim[0] : bp_lim[1] : resolution * 1j]
-    JK_grid = JK * np.ones((resolution, resolution))
-    JKapbp = np.concatenate((JK_grid[:, :, np.newaxis],
+    Jp_grid = Jp * np.ones((resolution, resolution))
+    Jpapbp = np.concatenate((Jp_grid[:, :, np.newaxis],
                              ap_grid[:, :, np.newaxis],
                              bp_grid[:, :, np.newaxis]),
                             axis=2)
-    JMh = _JKapbp_to_JMh(JKapbp)
-    sRGB = _JMh_to_sRGB(JMh)
+    sRGB = _uniform_to_sRGB1(Jpapbp)
     sRGBA = np.concatenate((sRGB, np.ones(sRGB.shape[:2] + (1,))),
                            axis=2)
     sRGBA[np.any((sRGB < 0) | (sRGB > 1), axis=-1)] = [0, 0, 0, 0]
@@ -409,9 +368,9 @@ def draw_pure_hue_angles(ax):
         ax.plot([0, x * 1000], [0, y * 1000], color + "--")
 
 
-def draw_sRGB_gamut_JK_slice(ax, JK, ap_lim=(-50, 50), bp_lim=(-50, 50),
+def draw_sRGB_gamut_Jp_slice(ax, Jp, ap_lim=(-50, 50), bp_lim=(-50, 50),
                              **kwargs):
-    sRGB = sRGB_gamut_JK_slice(JK, ap_lim=ap_lim, bp_lim=bp_lim, **kwargs)
+    sRGB = sRGB_gamut_Jp_slice(Jp, ap_lim=ap_lim, bp_lim=bp_lim, **kwargs)
     im = ax.imshow(sRGB, aspect="equal",
                    extent=ap_lim + bp_lim, origin="lower")
     draw_pure_hue_angles(ax)
@@ -444,7 +403,7 @@ def _viscm_editor_axes():
 
 
 class viscm_editor(object):
-    def __init__(self, min_JK=15, max_JK=95, xp=None, yp=None):
+    def __init__(self, min_Jp=15, max_Jp=95, xp=None, yp=None):
         from pycam02ucs.cm.bezierbuilder import BezierModel, BezierBuilder
 
         axes = _viscm_editor_axes()
@@ -463,23 +422,23 @@ class viscm_editor(object):
         self.prop_windows = []
 
         axcolor = 'None'
-        ax_jk_min = plt.axes([0.1, 0.1, 0.5, 0.03], axisbg=axcolor)
-        ax_jk_min.imshow(np.linspace(0, 100, 101).reshape(1, -1), cmap='gray')
-        ax_jk_min.set_xlim(0, 100)
+        ax_jp_min = plt.axes([0.1, 0.1, 0.5, 0.03], axisbg=axcolor)
+        ax_jp_min.imshow(np.linspace(0, 100, 101).reshape(1, -1), cmap='gray')
+        ax_jp_min.set_xlim(0, 100)
 
-        ax_jk_max = plt.axes([0.1, 0.15, 0.5, 0.03], axisbg=axcolor)
-        ax_jk_max.imshow(np.linspace(0, 100, 101).reshape(1, -1), cmap='gray')
+        ax_jp_max = plt.axes([0.1, 0.15, 0.5, 0.03], axisbg=axcolor)
+        ax_jp_max.imshow(np.linspace(0, 100, 101).reshape(1, -1), cmap='gray')
 
-        self.jk_min_slider = Slider(ax_jk_min, r"$J/K_\mathrm{min}$", 0, 100, valinit=min_JK)
-        self.jk_max_slider = Slider(ax_jk_max, r"$J/K_\mathrm{max}$", 0, 100, valinit=max_JK)
+        self.jp_min_slider = Slider(ax_jp_min, r"$J/K_\mathrm{min}$", 0, 100, valinit=min_Jp)
+        self.jp_max_slider = Slider(ax_jp_max, r"$J/K_\mathrm{max}$", 0, 100, valinit=max_Jp)
 
-        self.jk_min_slider.on_changed(self._jk_update)
-        self.jk_max_slider.on_changed(self._jk_update)
+        self.jp_min_slider.on_changed(self._jp_update)
+        self.jp_max_slider.on_changed(self._jp_update)
 
         # This is my favorite set of control points so far (just from playing
         # around with things):
-        #   min_JK = 15
-        #   max_JK = 95
+        #   min_Jp = 15
+        #   max_Jp = 95
         #   xp =
         #     [-4, 27.041103603603631, 84.311067635550557, 12.567076579094476, -9.6]
         #   yp =
@@ -496,8 +455,8 @@ class viscm_editor(object):
 
         self.bezier_model = BezierModel(xp, yp)
         self.cmap_model = BezierCMapModel(self.bezier_model,
-                                          self.jk_min_slider.val,
-                                          self.jk_max_slider.val)
+                                          self.jp_min_slider.val,
+                                          self.jp_max_slider.val)
         self.highlight_point_model = HighlightPointModel(self.cmap_model, 0.5)
 
         self.bezier_builder = BezierBuilder(axes['bezier'], self.bezier_model)
@@ -507,7 +466,7 @@ class viscm_editor(object):
                                    self.highlight_point_model)
         self.bezier_highlight_point_view = tmp
 
-        draw_pure_hue_angles(axes['bezier'])
+        #draw_pure_hue_angles(axes['bezier'])
         axes['bezier'].set_xlim(-100, 100)
         axes['bezier'].set_ylim(-100, 100)
 
@@ -533,8 +492,8 @@ class viscm_editor(object):
         # Used to reconstruct the colormap in pycam02ucs.cm.viscm
         parameters = {{'xp': {xp},
                       'yp': {yp},
-                      'min_JK': {min_JK},
-                      'max_JK': {max_JK}}}
+                      'min_Jp': {min_Jp},
+                      'max_Jp': {max_Jp}}}
 
         cm_data = {array_list}
 
@@ -565,8 +524,8 @@ class viscm_editor(object):
             data = dict(array_list=array_list,
                         xp=xp,
                         yp=yp,
-                        min_JK=self.cmap_model.min_JK,
-                        max_JK=self.cmap_model.max_JK)
+                        min_Jp=self.cmap_model.min_Jp,
+                        max_Jp=self.cmap_model.max_Jp)
 
             f.write(template.format(**data))
 
@@ -581,48 +540,43 @@ class viscm_editor(object):
         self.prop_windows.append(viscm(cm, name='test_cm'))
         plt.show()
 
-    def _jk_update(self, val):
-        jk_min = self.jk_min_slider.val
-        jk_max = self.jk_max_slider.val
+    def _jp_update(self, val):
+        jp_min = self.jp_min_slider.val
+        jp_max = self.jp_max_slider.val
 
-        smallest, largest = min(jk_min, jk_max), max(jk_min, jk_max)
-        if (jk_min > smallest) or (jk_max < largest):
-            self.jk_min_slider.set_val(smallest)
-            self.jk_max_slider.set_val(largest)
+        smallest, largest = min(jp_min, jp_max), max(jp_min, jp_max)
+        if (jp_min > smallest) or (jp_max < largest):
+            self.jp_min_slider.set_val(smallest)
+            self.jp_max_slider.set_val(largest)
 
-        self.cmap_model.set_JK_minmax(smallest, largest)
+        self.cmap_model.set_Jp_minmax(smallest, largest)
 
 class BezierCMapModel(object):
-    def __init__(self, bezier_model, min_JK, max_JK):
+    def __init__(self, bezier_model, min_Jp, max_Jp):
         self.bezier_model = bezier_model
-        self.min_JK = min_JK
-        self.max_JK = max_JK
+        self.min_Jp = min_Jp
+        self.max_Jp = max_Jp
         self.trigger = Trigger()
 
         self.bezier_model.trigger.add_callback(self.trigger.fire)
 
-    def set_JK_minmax(self, min_JK, max_JK):
-        self.min_JK = min_JK
-        self.max_JK = max_JK
+    def set_Jp_minmax(self, min_Jp, max_Jp):
+        self.min_Jp = min_Jp
+        self.max_Jp = max_Jp
         self.trigger.fire()
 
-    def get_JKapbp_at(self, at):
+    def get_Jpapbp_at(self, at):
         ap, bp = self.bezier_model.get_bezier_points_at(at)
-        JK = (self.max_JK - self.min_JK) * at + self.min_JK
-        return JK, ap, bp
+        Jp = (self.max_Jp - self.min_Jp) * at + self.min_Jp
+        return Jp, ap, bp
 
-    def get_JKapbp(self, num=200):
-        # ap, bp = self.bezier_model.get_bezier_points(num)
-        # assert ap.ndim == bp.ndim == 1
-        # JK = np.linspace(self.min_JK, self.max_JK, num=ap.shape[0])
-        # return JK, ap, bp
-        return self.get_JKapbp_at(np.linspace(0, 1, num))
+    def get_Jpapbp(self, num=200):
+        return self.get_Jpapbp_at(np.linspace(0, 1, num))
 
     def get_sRGB(self, num=200):
         # Return sRGB and out-of-gamut mask
-        JK, ap, bp = self.get_JKapbp(num=num)
-        JMh = _JKapbp_to_JMh(np.column_stack((JK, ap, bp)))
-        sRGB = _JMh_to_sRGB(JMh)
+        Jp, ap, bp = self.get_Jpapbp(num=num)
+        sRGB = _uniform_to_sRGB1(np.column_stack((Jp, ap, bp)))
         oog = np.any((sRGB > 1) | (sRGB < 0), axis=-1)
         sRGB[oog, :] = np.nan
         return sRGB, oog
@@ -674,8 +628,8 @@ class HighlightPointModel(object):
         self._point = point
         self.trigger.fire()
 
-    def get_JKapbp(self):
-        return self._cmap_model.get_JKapbp_at(self._point)
+    def get_Jpapbp(self):
+        return self._cmap_model.get_Jpapbp_at(self._point)
 
 
 class HighlightPointBuilder(object):
@@ -742,12 +696,12 @@ class GamutViewer2D(object):
         self.highlight_point_model.trigger.add_callback(self._refresh)
 
     def _refresh(self):
-        JK, _, _ = self.highlight_point_model.get_JKapbp()
+        Jp, _, _ = self.highlight_point_model.get_Jpapbp()
         low, high = self.bgcolor_ranges[self.bg]
-        if not (low <= JK <= high):
+        if not (low <= Jp <= high):
             self.bg = self.bg_opposites[self.bg]
             self.ax.set_axis_bgcolor(self.bgcolors[self.bg])
-        sRGB = sRGB_gamut_JK_slice(JK, self.ap_lim, self.bp_lim)
+        sRGB = sRGB_gamut_Jp_slice(Jp, self.ap_lim, self.bp_lim)
         self.image.set_data(sRGB)
 
 
@@ -756,13 +710,13 @@ class HighlightPoint2DView(object):
         self.ax = ax
         self.highlight_point_model = highlight_point_model
 
-        _, ap, bp = self.highlight_point_model.get_JKapbp()
+        _, ap, bp = self.highlight_point_model.get_Jpapbp()
         self.marker = self.ax.plot([ap], [bp], "y.", mew=3)[0]
 
         self.highlight_point_model.trigger.add_callback(self._refresh)
 
     def _refresh(self):
-        _, ap, bp = self.highlight_point_model.get_JKapbp()
+        _, ap, bp = self.highlight_point_model.get_Jpapbp()
         self.marker.set_data([ap], [bp])
         self.ax.figure.canvas.draw()
 
@@ -773,12 +727,12 @@ class WireframeView(object):
         self.cmap_model = cmap_model
         self.highlight_point_model = highlight_point_model
 
-        JK, ap, bp = self.cmap_model.get_JKapbp()
+        Jp, ap, bp = self.cmap_model.get_Jpapbp()
         self.line = self.ax.plot([0, 10], [0, 10])[0]
-        #self.line = self.ax.plot(JK, ap, bp)[0]
+        #self.line = self.ax.plot(Jp, ap, bp)[0]
 
-        JK, ap, bp = self.highlight_point_model.get_JKapbp()
-        self.marker = self.ax.plot([JK], [ap], [bp], "y.", mew=3)[0]
+        Jp, ap, bp = self.highlight_point_model.get_Jpapbp()
+        self.marker = self.ax.plot([Jp], [ap], [bp], "y.", mew=3)[0]
 
         gamut_patch = sRGB_gamut_patch()
         # That function returns a patch where each face is colored to match
@@ -788,7 +742,7 @@ class WireframeView(object):
         gamut_patch.set_edgecolor([0.2, 0.2, 0.2, 0.1])
         self.ax.add_collection3d(gamut_patch)
 
-        _setup_JKapbp_axis(self.ax)
+        _setup_Jpapbp_axis(self.ax)
 
         #self.cmap_model.trigger.add_callback(self._refresh_line)
         #self.highlight_point_model.trigger.add_callback(self._refresh_point)
@@ -796,15 +750,15 @@ class WireframeView(object):
         self._refresh_point()
 
     def _refresh_line(self):
-        JK, ap, bp = self.cmap_model.get_JKapbp()
+        Jp, ap, bp = self.cmap_model.get_Jpapbp()
         self.line.set_data(ap, bp)
-        self.line.set_3d_properties(zs=JK)
+        self.line.set_3d_properties(zs=Jp)
         self.ax.figure.canvas.draw()
 
     def _refresh_point(self):
-        JK, ap, bp = self.highlight_point_model.get_JKapbp()
+        Jp, ap, bp = self.highlight_point_model.get_Jpapbp()
         self.marker.set_data([ap], [bp])
-        self.marker.set_3d_properties(zs=[JK])
+        self.marker.set_3d_properties(zs=[Jp])
         self.ax.figure.canvas.draw()
 
 
@@ -857,6 +811,9 @@ def main(argv):
                 exec(code, globals(), ns)
 
             params = ns.get('parameters', {})
+            if "min_JK" in params:
+                params["min_Jp"] = params.pop("min_JK")
+                params["max_Jp"] = params.pop("max_JK")
             cmap = ns.get("test_cm", None)
         else:
             cmap = plt.get_cmap(args.colormap)

@@ -50,7 +50,9 @@ def _CVD_inverse(sRGB, cvd_type, severity):
 
 EDGES += pair({"name": "sRGB1+CVD", "cvd_type": MATCH, "severity": MATCH},
               {"name": "sRGB1-linear+CVD", "cvd_type": MATCH, "severity": MATCH},
-              sRGB1_to_sRGB1_linear, sRGB1_linear_to_sRGB1)
+              lambda x, **kwargs: sRGB1_to_sRGB1_linear(x),
+              lambda x, **kwargs: sRGB1_linear_to_sRGB1(x),
+              )
 
 EDGES += pair({"name": "sRGB1-linear+CVD", "cvd_type": ANY, "severity": ANY},
               "sRGB1-linear",

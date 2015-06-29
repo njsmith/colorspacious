@@ -54,11 +54,11 @@ like to consider:
   * ``ColorPy``: http://markkness.net/colorpy/ColorPy.html
 
 
-
-
-similarly fix naming for J'a'b' or JKapbp or whatever
-
-add colorblindness simulation
-add CIELCh, J'a'b'?
-
 clean up viscm
+
+tests for CVD
+tests for deltaEp
+error tests in ciecam02
+error and some calling option tests in conversion
+docs
+coveralls

@@ -23,9 +23,10 @@ from pycam02ucs.cm.minimvc import Trigger
 
 # Our preferred space (mostly here so we can easily tweak it when curious)
 UNIFORM_SPACE = "CAM02-UCS"
+GREYSCALE_CONVERSION_SPACE = "JCh"
 
-_sRGB1_to_JCh = cspace_converter("sRGB1", "JCh")
-_JCh_to_sRGB1 = cspace_converter("JCh", "sRGB1")
+_sRGB1_to_JCh = cspace_converter("sRGB1", GREYSCALE_CONVERSION_SPACE)
+_JCh_to_sRGB1 = cspace_converter(GREYSCALE_CONVERSION_SPACE, "sRGB1")
 def to_greyscale(sRGB1):
     JCh = _sRGB1_to_JCh(sRGB1)
     JCh[..., 1] = 0

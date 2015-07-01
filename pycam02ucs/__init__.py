@@ -10,6 +10,6 @@ from .ciecam02 import CIECAM02Space, CIECAM02Surround, NegativeAError, JChQMsH
 
 from .luoetal2006 import LuoEtAl2006UniformSpace, CAM02UCS, CAM02SCD, CAM02LCD
 
-from .conversion import cspace_converter, convert_cspace
+from .conversion import cspace_converter, cspace_convert
 
 from .deltaEp import deltaEp

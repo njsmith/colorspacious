@@ -2,7 +2,7 @@
 # Copyright (C) 2014-2015 Nathaniel Smith <njs@pobox.com>
 # See file LICENSE.txt for license information.
 
-from .conversion import convert_cspace
+from .conversion import cspace_convert
 
 def deltaEp(color1, color2,
             source_space="sRGB1", uniform_space="CAM02-UCS"):
@@ -13,16 +13,16 @@ def deltaEp(color1, color2,
     pairs of colors.
 
     :param source_space: The space the colors start out in. Can be anything
-       recognized by :func:`convert_cspace`. Default: "sRGB1"
+       recognized by :func:`cspace_convert`. Default: "sRGB1"
     :param uniform_space: Which space to perform the distance measurement
        in. This should be a uniform space like CAM02-UCS where
        Euclidean distance approximates similarity judgements, because
        otherwise the results of this function won't be very meaningful, but in
-       fact any color space known to :func:`convert_cspace` will be accepted.
+       fact any color space known to :func:`cspace_convert` will be accepted.
     """
 
-    JpKapbp1 = convert(color1, source_space, uniform_space)
+    uniform1 = cspace_convert(color1, source_space, uniform_space)
 
-    JpKapbp2 = convert(color2, source_space, uniform_space)
+    uniform2 = cspace_convert(color2, source_space, uniform_space)
 
-    return np.sqrt(np.sum((JpKapbp1 - JpKapbp2) ** 2, axis=-1))
+    return np.sqrt(np.sum((uniform1 - uniform2) ** 2, axis=-1))

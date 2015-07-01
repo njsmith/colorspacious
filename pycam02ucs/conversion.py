@@ -20,7 +20,7 @@ from .cvd import machado_et_al_2009_matrix
 
 from .transform_graph import Edge, MATCH, ANY, TransformGraph
 
-__all__ = ["cspace_converter", "convert_cspace"]
+__all__ = ["cspace_converter", "cspace_convert"]
 
 ################################################################
 
@@ -198,35 +198,35 @@ def cspace_converter(start, end):
     end = norm_cspace_id(end)
     return GRAPH.get_transform(start, end)
 
-def convert_cspace(arr, start, end):
+def cspace_convert(arr, start, end):
     converter = cspace_converter(start, end)
     return converter(arr)
 
-def check_convert_cspace(source_cspace, target_cspace, gold, **kwargs):
+def check_cspace_convert(source_cspace, target_cspace, gold, **kwargs):
     def forward(source_values):
-        return convert_cspace(source_values, source_cspace, target_cspace)
+        return cspace_convert(source_values, source_cspace, target_cspace)
     def reverse(target_values):
-        return convert_cspace(target_values, target_cspace, source_cspace)
+        return cspace_convert(target_values, target_cspace, source_cspace)
     check_conversion(forward, reverse, gold, **kwargs)
 
-def test_convert_cspace_long_paths():
+def test_cspace_convert_long_paths():
     from .gold_values import sRGB1_xyY100_gold
-    check_convert_cspace("sRGB1", "xyY100", sRGB1_xyY100_gold,
+    check_cspace_convert("sRGB1", "xyY100", sRGB1_xyY100_gold,
                          a_min=0, a_max=1,
                          b_min=0, b_max=[1, 1, 100])
 
     from .gold_values import sRGB1_xyY1_gold
-    check_convert_cspace("sRGB1", "xyY1", sRGB1_xyY1_gold,
+    check_cspace_convert("sRGB1", "xyY1", sRGB1_xyY1_gold,
                          a_min=0, a_max=1,
                          b_min=0, b_max=1)
 
     from .gold_values import XYZ1_sRGB255_gold
-    check_convert_cspace("XYZ1", "sRGB255", XYZ1_sRGB255_gold,
+    check_cspace_convert("XYZ1", "sRGB255", XYZ1_sRGB255_gold,
                          a_min=0, a_max=1,
                          b_min=0, b_max=255)
 
     from .gold_values import sRGB1_CIELab_gold_D65
-    check_convert_cspace("sRGB1", "CIELab", sRGB1_CIELab_gold_D65,
+    check_cspace_convert("sRGB1", "CIELab", sRGB1_CIELab_gold_D65,
                          a_min=0, a_max=1,
                          b_min=[10, -30, 30], b_max=[90, 30, 30],
                          # Ridiculously low precision, but both Lindbloom and
@@ -236,18 +236,18 @@ def test_convert_cspace_long_paths():
 
     # Makes sure that CIELab conversions are sensitive to whitepoint
     from .gold_values import XYZ100_CIELab_gold_D50
-    check_convert_cspace("XYZ100", {"name": "CIELab", "XYZ100_w": "D50"},
+    check_cspace_convert("XYZ100", {"name": "CIELab", "XYZ100_w": "D50"},
                          XYZ100_CIELab_gold_D50,
                          b_min=[10, -30, 30], b_max=[90, 30, 30])
 
     from .gold_values import XYZ100_CIELCh_gold_D65
-    check_convert_cspace("XYZ100", "CIELCh",
+    check_cspace_convert("XYZ100", "CIELCh",
                          XYZ100_CIELCh_gold_D65,
                          a_min=[10, -30, 30], a_max=[90, 30, 30],
                          b_min=0, b_max=[100, 50, 360])
 
     from .gold_values import XYZ100_CIELCh_gold_D50
-    check_convert_cspace("XYZ100",
+    check_cspace_convert("XYZ100",
                          {"name": "CIELCh", "XYZ100_w": "D50"},
                          XYZ100_CIELCh_gold_D50,
                          a_min=[10, -30, 30], a_max=[90, 30, 30],
@@ -256,11 +256,11 @@ def test_convert_cspace_long_paths():
     from .gold_values import XYZ100_CIECAM02_gold
     for t in XYZ100_CIECAM02_gold:
         # Check full-fledged CIECAM02 conversions
-        xyY100 = convert_cspace(t.XYZ100, "XYZ100", "xyY100")
-        CIECAM02_got = convert_cspace(xyY100, "xyY100", t.vc)
+        xyY100 = cspace_convert(t.XYZ100, "XYZ100", "xyY100")
+        CIECAM02_got = cspace_convert(xyY100, "xyY100", t.vc)
         for i in range(len(CIECAM02_got)):
             assert np.allclose(CIECAM02_got[i], t.expected[i], atol=1e-5)
-        xyY100_got = convert_cspace(CIECAM02_got, t.vc, "xyY100")
+        xyY100_got = cspace_convert(CIECAM02_got, t.vc, "xyY100")
         assert np.allclose(xyY100_got, xyY100)
 
         # Check subset CIECAM02 conversions
@@ -268,16 +268,16 @@ def test_convert_cspace_long_paths():
             return {"name": "CIECAM02-subset",
                     "axes": axes, "ciecam02_space": t.vc}
         JCh = stacklast(t.expected.J, t.expected.C, t.expected.h)
-        xyY100_got2 = convert_cspace(JCh, subset("JCh"), "xyY100")
+        xyY100_got2 = cspace_convert(JCh, subset("JCh"), "xyY100")
         assert np.allclose(xyY100_got2, xyY100)
 
-        JCh_got = convert_cspace(xyY100, "xyY100", subset("JCh"))
+        JCh_got = cspace_convert(xyY100, "xyY100", subset("JCh"))
         assert np.allclose(JCh_got, JCh, rtol=1e-4)
 
         # Check subset->subset CIECAM02
-        # This needs only plain arrays so we can use check_convert_cspace
+        # This needs only plain arrays so we can use check_cspace_convert
         QMH = stacklast(t.expected.Q, t.expected.M, t.expected.H)
-        check_convert_cspace(subset("JCh"), subset("QMH"),
+        check_cspace_convert(subset("JCh"), subset("QMH"),
                              [(JCh, QMH)],
                              a_max=[100, 100, 360],
                              b_max=[100, 100, 400])
@@ -291,7 +291,7 @@ def test_convert_cspace_long_paths():
 
     # "If we have a color that looks like t1.expected under viewing conditions
     # t1, then what does it look like under viewing conditions t2?"
-    got2 = convert_cspace(t1.expected, t1.vc, t2.vc)
+    got2 = cspace_convert(t1.expected, t1.vc, t2.vc)
     for i in range(len(got2)):
         assert np.allclose(got2[i], t2.expected[i], atol=1e-5)
 
@@ -301,21 +301,21 @@ def test_convert_cspace_long_paths():
                   "ciecam02_space": t1.vc}
     JCh_space2 = {"name": "CIECAM02-subset", "axes": "JCh",
                   "ciecam02_space": t2.vc}
-    check_convert_cspace(JCh_space1, JCh_space2,
+    check_cspace_convert(JCh_space1, JCh_space2,
                          [(JCh1, JCh2)],
                          a_max=[100, 100, 360],
                          b_max=[100, 100, 360])
 
     # J'a'b'
     from .gold_values import JMh_to_CAM02UCS_silver
-    check_convert_cspace("JMh", "CAM02-UCS", JMh_to_CAM02UCS_silver,
+    check_cspace_convert("JMh", "CAM02-UCS", JMh_to_CAM02UCS_silver,
                          a_max=[100, 100, 360],
                          b_min=[0, -30, -30], b_max=[100, 30, 30])
     from .gold_values import JMh_to_CAM02LCD_silver
-    check_convert_cspace("JMh", "CAM02-LCD", JMh_to_CAM02LCD_silver,
+    check_cspace_convert("JMh", "CAM02-LCD", JMh_to_CAM02LCD_silver,
                          a_max=[100, 100, 360],
                          b_min=[0, -30, -30], b_max=[100, 30, 30])
     from .gold_values import JMh_to_CAM02SCD_silver
-    check_convert_cspace("JMh", "CAM02-SCD", JMh_to_CAM02SCD_silver,
+    check_cspace_convert("JMh", "CAM02-SCD", JMh_to_CAM02SCD_silver,
                          a_max=[100, 100, 360],
                          b_min=[0, -30, -30], b_max=[100, 30, 30])

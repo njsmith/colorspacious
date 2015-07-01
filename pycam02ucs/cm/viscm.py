@@ -17,7 +17,7 @@ from matplotlib.widgets import Button, Slider
 import matplotlib.colors
 from matplotlib.colors import LinearSegmentedColormap
 
-from pycam02ucs import convert_cspace, cspace_converter
+from pycam02ucs import cspace_converter
 from pycam02ucs.srgb import sRGB_to_XYZ, XYZ_to_sRGB
 from pycam02ucs.cm.minimvc import Trigger
 

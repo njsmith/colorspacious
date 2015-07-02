@@ -52,13 +52,3 @@ like to consider:
   * ``colormath``: http://python-colormath.readthedocs.org/
   * ``ciecam02``: https://pypi.python.org/pypi/ciecam02/
   * ``ColorPy``: http://markkness.net/colorpy/ColorPy.html
-
-
-clean up viscm
-
-tests for CVD
-tests for deltaEp
-error tests in ciecam02
-error and some calling option tests in conversion
-docs
-coveralls

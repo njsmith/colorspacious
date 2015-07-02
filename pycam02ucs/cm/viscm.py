@@ -130,7 +130,7 @@ def _vis_axes():
             'image2-cb': grid[7:, 3],
     }
 
-    axes = {key: plt.subplot(value) for (key, value) in axes.items()}
+    axes = dict([(key, plt.subplot(value)) for (key, value) in axes.items()])
     axes['gamut'] = plt.subplot(grid[6:, :2], projection='3d')
     axes['gamut-toggle'] = plt.axes([0.01, 0.01, 0.08, 0.025])
 

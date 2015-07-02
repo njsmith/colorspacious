@@ -258,16 +258,16 @@ class viscm(object):
 
         images = []
         image_args = []
-        example_dir = os.path.dirname(__file__) + "/examples/"
+        example_dir = os.path.join(os.path.dirname(__file__), "examples")
 
-        images.append(np.loadtxt(example_dir + "hist2d.txt"))
+        images.append(np.loadtxt(os.path.join(example_dir, "hist2d.txt")))
         image_args.append({"aspect": "equal",
                            "origin": "lower",
                            "interpolation": "nearest",
                            "vmin": 0})
 
-        images.append(np.loadtxt(example_dir
-                                 + "st-helens_before-modified.txt.gz").T)
+        images.append(np.loadtxt(os.path.join(example_dir,
+                                 "st-helens_before-modified.txt.gz")).T)
         image_args.append({})
 
         # Adapted from http://matplotlib.org/mpl_examples/images_contours_and_fields/pcolormesh_levels.py

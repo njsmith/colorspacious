@@ -32,4 +32,5 @@ setup(
         ],
     packages=find_packages(),
     install_requires=["numpy"],
+    package_data={'pycam02ucs': ['cm/examples/*']},
 )

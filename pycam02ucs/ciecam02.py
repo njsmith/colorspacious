@@ -8,27 +8,17 @@ from collections import namedtuple
 
 import numpy as np
 
-# These all get re-exported at the package level
+from .illuminants import as_XYZ100_w
+
 __all__ = [
-    "Illuminant", "Surround", "ViewingConditions", "NegativeAError",
+    "CIECAM02Surround", "CIECAM02Space", "NegativeAError",
+    "JChQMsH",
 ]
 
-class Illuminant(object):
-    def __init__(self):
-        # This is just a little namespace for constants
-        raise NotImplementedError
-
-    # Sourced from http://www.easyrgb.com/index.php?X=MATH&H=15
-    # 2 degree (CIE 1931) values
-    C   = np.asarray([98.074, 100, 118.232])
-    D50 = np.asarray([96.422, 100,  82.521])
-    D55 = np.asarray([95.682, 100,  92.149])
-    D65 = np.asarray([95.047, 100, 108.883])
-
-Surround = namedtuple("Surround", ["F", "c", "N_c"])
-Surround.AVERAGE = Surround(1.0, 0.69,  1.0)
-Surround.DIM     = Surround(0.9, 0.59,  1.95)
-Surround.DARK    = Surround(0.8, 0.525, 1.8)
+CIECAM02Surround = namedtuple("CIECAM02Surround", ["F", "c", "N_c"])
+CIECAM02Surround.AVERAGE = CIECAM02Surround(1.0, 0.69,  1.0)
+CIECAM02Surround.DIM     = CIECAM02Surround(0.9, 0.59,  1.95)
+CIECAM02Surround.DARK    = CIECAM02Surround(0.8, 0.525, 1.8)
 
 
 JChQMsH = namedtuple("JChQMsH", ["J", "C", "h", "Q", "M", "s", "H"])
@@ -79,7 +69,7 @@ def require_exactly_one(**kwargs):
 class NegativeAError(ValueError):
     pass
 
-class ViewingConditions(object):
+class CIECAM02Space(object):
     """
 
     Xw, Yw, Zw: whitepoint
@@ -95,11 +85,11 @@ class ViewingConditions(object):
     Dim       0.9   0.59   0.95
     Dark      0.8   0.525  0.8
     """
-    def __init__(self, XYZ_w, Y_b, L_A,
-                 surround=Surround.AVERAGE):
-        self.XYZ_w = np.array(XYZ_w, dtype=float)
-        if self.XYZ_w.shape != (3,):
-            raise ValueError("Hey! XYZ_w should have shape (3,)!")
+    def __init__(self, XYZ100_w, Y_b, L_A,
+                 surround=CIECAM02Surround.AVERAGE):
+        self.XYZ100_w = as_XYZ100_w(XYZ100_w)
+        if self.XYZ100_w.shape != (3,):
+            raise ValueError("Hey! XYZ100_w should have shape (3,)!")
         self.Y_b = float(Y_b)
         self.L_A = float(L_A)
         self.surround = surround
@@ -107,15 +97,20 @@ class ViewingConditions(object):
         self.c = float(surround.c)
         self.N_c = float(surround.N_c)
 
-        self.RGB_w = np.dot(M_CAT02, self.XYZ_w)
+        self.RGB_w = np.dot(M_CAT02, self.XYZ100_w)
         self.D = self.F * (1 - (1/3.6) * np.exp((-self.L_A - 42) / 92))
         self.D = np.clip(self.D, 0, 1)
 
-        self.D_RGB = self.D * self.XYZ_w[1] / self.RGB_w + 1 - self.D
+        self.D_RGB = self.D * self.XYZ100_w[1] / self.RGB_w + 1 - self.D
+        # Fairchild (2013), pages 290-292, recommends using this equation
+        # instead, though notes that it doesn't make much difference as part
+        # of a full CIECAM02 system. (It matters more if you're only using
+        # pieces.)
+        #self.D_RGB = self.D * 100 / self.RGB_w + 1 - self.D
         self.k = 1 / (5 * self.L_A + 1)
         self.F_L = (0.2 * self.k ** 4 * (5 * self.L_A)
                     + 0.1 * (1 - self.k**4)**2 * (5 * self.L_A) ** (1./3))
-        self.n = self.Y_b / self.XYZ_w[1]
+        self.n = self.Y_b / self.XYZ100_w[1]
         self.z = 1.48 + np.sqrt(self.n)
         self.N_bb = 0.725 * (1 / self.n)**0.2
         self.N_cb = self.N_bb  #??
@@ -129,27 +124,27 @@ class ViewingConditions(object):
 
     def __repr__(self):
         surround_string = ", surround=%r" % (self.surround,)
-        if self.surround == Surround.AVERAGE:
+        if self.surround == CIECAM02Surround.AVERAGE:
             surround_string = ""
         return "%s(%r, %r, %r%s) " % (
             self.__class__.__name__,
-            list(self.XYZ_w),
+            list(self.XYZ100_w),
             self.Y_b,
             self.L_A,
             surround_string)
 
-    # XYZ must have shape (3,) or (3, n)
-    def XYZ_to_CIECAM02(self, XYZ, on_negative_A="raise"):
+    # XYZ100 must have shape (3,) or (3, n)
+    def XYZ100_to_CIECAM02(self, XYZ100, on_negative_A="raise"):
         """Computes CIECAM02 appearance correlates for the given tristimulus
-        value(s) XYZ.
+        value(s) XYZ (normalized to be on the 0-100 scale).
 
-        Example: ``vc.XYZ_to_CIECAM02([30.0, 45.5, 21.0])``
+        Example: ``vc.XYZ100_to_CIECAM02([30.0, 45.5, 21.0])``
 
-        :arg XYZ: An array-like of tristimulus values. These should be given
-          on the 0-100 scale, not the 0-1 scale. The array-like should have
-          shape ``(..., 3)``; e.g., you can use a simple 3-item list (shape =
-          ``(3,)``, or to efficiently perform multiple computations at once,
-          you should
+        :arg XYZ100: An array-like of tristimulus values. These should be
+          given on the 0-100 scale, not the 0-1 scale. The array-like should
+          have shape ``(..., 3)``; e.g., you can use a simple 3-item list
+          (shape = ``(3,)``), or to efficiently perform multiple computations
+          at once, you could pass a higher-dimensional array, e.g. an image.
         :arg on_negative_A: A known infelicity of the CIECAM02 model is that
           for some inputs, the achromatic signal :math:`A` can be negative,
           which makes it impossible to compute :math:`J`, :math:`C`,
@@ -178,13 +173,13 @@ class ViewingConditions(object):
 
         #### Argument checking
 
-        XYZ = np.asarray(XYZ, dtype=float)
-        if XYZ.shape[-1] != 3:
-            raise ValueError("XYZ shape must be (..., 3)")
+        XYZ100 = np.asarray(XYZ100, dtype=float)
+        if XYZ100.shape[-1] != 3:
+            raise ValueError("XYZ100 shape must be (..., 3)")
 
         #### Step 1
 
-        RGB = broadcasting_matvec(M_CAT02, XYZ)
+        RGB = broadcasting_matvec(M_CAT02, XYZ100)
 
         #### Step 2
 
@@ -260,8 +255,8 @@ class ViewingConditions(object):
         return ((4 / self.c) * (J / 100) ** 0.5
                 * (self.A_w + 4) * self.F_L**0.25)
 
-    def CIECAM02_to_XYZ(self, J=None, C=None, h=None,
-                        Q=None, M=None, s=None, H=None):
+    def CIECAM02_to_XYZ100(self, J=None, C=None, h=None,
+                           Q=None, M=None, s=None, H=None):
         """Return the unique tristimulus values that have the given CIECAM02
         appearance correlates under these viewing conditions.
 
@@ -412,17 +407,17 @@ class ViewingConditions(object):
 
         #### Step 8
 
-        XYZ = broadcasting_matvec(M_CAT02_inv, RGB)
+        XYZ100 = broadcasting_matvec(M_CAT02_inv, RGB)
 
-        XYZ = XYZ.reshape(target_shape + (3,))
+        XYZ100 = XYZ100.reshape(target_shape + (3,))
 
-        return XYZ
+        return XYZ100
 
-ViewingConditions.sRGB = ViewingConditions(
+CIECAM02Space.sRGB = CIECAM02Space(
     # sRGB specifies a D65 monitor and a D50 ambient. CIECAM02 doesn't really
     # know how to deal with this discrepancy; it appears that the usual thing
     # to do is just to use D65 for the whitepoint.
-    XYZ_w=Illuminant.D65,
+    XYZ100_w="D65",
     Y_b=20,
     # To compute L_A:
     #   illuminance in lux / pi = luminance in cd/m^2
@@ -430,162 +425,106 @@ ViewingConditions.sRGB = ViewingConditions(
     # See Moroney (2000), "Usage guidelines for CIECAM97s".
     # sRGB illuminance is 64 lux.
     L_A=(64 / np.pi) * 5,
-    surround=Surround.AVERAGE)
+    surround=CIECAM02Surround.AVERAGE)
 
 
 ################################################################
 # Tests
 ################################################################
 
-def check_roundtrip(vc, XYZ):
+def check_roundtrip(vc, XYZ100):
     try:
-        values = vc.XYZ_to_CIECAM02(XYZ, on_negative_A="raise")
+        values = vc.XYZ100_to_CIECAM02(XYZ100, on_negative_A="raise")
     except NegativeAError:
         # don't expect to be able to round-trip these values
         return
     for kwarg1 in ["J", "Q"]:
         for kwarg2 in ["C", "M", "s"]:
             for kwarg3 in ["h", "H"]:
-                got = vc.CIECAM02_to_XYZ(**{kwarg1: getattr(values, kwarg1),
+                got = vc.CIECAM02_to_XYZ100(**{kwarg1: getattr(values, kwarg1),
                                             kwarg2: getattr(values, kwarg2),
                                             kwarg3: getattr(values, kwarg3)})
-                assert np.allclose(got, XYZ)
+                assert np.allclose(got, XYZ100)
 
 def test_gold():
-    TestVec = namedtuple("TestVec",
-                         ["XYZ", "XYZ_w", "L_A", "Y_b", "F", "c", "N_c",
-                          "expected"])
+    from .gold_values import XYZ100_CIECAM02_gold
 
-    gold = [
-        # Gold values from
-        #   https://github.com/igd-geo/pcolor/blob/master/de.fhg.igd.pcolor.test/src/de/fhg/igd/pcolor/test/CAMWorkedExample.java
-        # apparently taken from CIE 159:2004 Section 9
-        TestVec(XYZ=[19.31, 23.93, 10.14],
-                XYZ_w=[98.88, 90, 32.03],
-                L_A=200,
-                Y_b=18,
-                F=1.0,
-                c=0.69,
-                N_c=1.0,
-                expected=JChQMsH(h=191.0452, J=48.0314, Q=183.1240,
-                                 s=46.0177, C=38.7789, M=38.7789,
-                                 H=240.8885)),
-        TestVec(XYZ=[19.31, 23.93, 10.14],
-                XYZ_w=[98.88, 90, 32.03],
-                L_A=20, # <- different from above
-                Y_b=18,
-                F=1.0,
-                c=0.69,
-                N_c=1.0,
-                expected=JChQMsH(h=185.3445, J=47.6856, Q=113.8401,
-                                 s=51.1275, C=36.0527, M=29.7580,
-                                 H=232.6630)),
-        # gold values from Mark Fairchild's spreadsheet at
-        #   http://rit-mcsl.org/fairchild//files/AppModEx.xls
-        TestVec(XYZ=[19.01, 20.00, 21.78],
-                XYZ_w=[95.05, 100.0, 108.88],
-                Y_b=20.0,
-                L_A=318.30988618379,
-                F=1.0,
-                c=0.69,
-                N_c=1.0,
-                expected=JChQMsH(h=219.04841, J=41.73109, Q=195.37131,
-                                 s=2.36031, C=0.10471, M=0.10884,
-                                 H=278.06070)),
-        TestVec(XYZ=[57.06, 43.06, 31.96],
-                XYZ_w=[95.05, 100.0, 108.88],
-                L_A=31.830988618379,
-                Y_b=20.0,
-                F=1.0,
-                c=0.69,
-                N_c=1.0,
-                expected=JChQMsH(h=19.55739, J=65.95523, Q=152.67220,
-                                 s=52.24549, C=48.57050, M=41.67327,
-                                 # This value is based on the corrected
-                                 # version of the spreadsheet that I sent Mark
-                                 # Fairchild on 2014-07-15... the original
-                                 # spreadsheet had it wrong, so if comparing
-                                 # be careful about which version you have!
-                                 H=399.38837,
-                             )),
-        ]
-
-    for t in gold:
-        vc = ViewingConditions(t.XYZ_w, t.Y_b, t.L_A,
-                               Surround(F=t.F, c=t.c, N_c=t.N_c))
-        got = vc.XYZ_to_CIECAM02(t.XYZ)
+    for t in XYZ100_CIECAM02_gold:
+        got = t.vc.XYZ100_to_CIECAM02(t.XYZ100)
         for i in range(len(got)):
             if t.expected[i] is not None:
                 assert np.allclose(got[i], t.expected[i], atol=1e-05)
-        check_roundtrip(vc, t.XYZ)
+        check_roundtrip(t.vc, t.XYZ100)
 
 def test_inverse():
     r = np.random.RandomState(0)
-    XYZ_values = [[0, 0, 0], [50, 50, 50]]
+    XYZ100_values = [[0, 0, 0], [50, 50, 50]]
     for i in range(10):
-        XYZ_values.append(r.uniform(high=100, size=3))
+        XYZ100_values.append(r.uniform(high=100, size=3))
 
-    for XYZ_w in [Illuminant.C, Illuminant.D50, Illuminant.D65]:
+    for illuminant in ["C", "D50", "D65"]:
         for Y_b in [20, 18]:
             for L_A in [30, 300]:
-                for surround in [Surround.AVERAGE,
-                                 Surround.DIM,
-                                 Surround.DARK]:
-                    vc = ViewingConditions(XYZ_w, Y_b, L_A, surround)
-                    for XYZ in XYZ_values:
-                        check_roundtrip(vc, XYZ)
+                for surround in [CIECAM02Surround.AVERAGE,
+                                 CIECAM02Surround.DIM,
+                                 CIECAM02Surround.DARK]:
+                    vc = CIECAM02Space(illuminant, Y_b, L_A, surround)
+                    for XYZ100 in XYZ100_values:
+                        check_roundtrip(vc, XYZ100)
 
 def test_exactly_one():
     from nose.tools import assert_raises
-    vc = ViewingConditions.sRGB
+    vc = CIECAM02Space.sRGB
 
     # Redundant specifications not allowed
-    assert_raises(ValueError, vc.CIECAM02_to_XYZ, J=1, C=1, h=1, Q=1)
-    assert_raises(ValueError, vc.CIECAM02_to_XYZ, J=1, C=1, h=1, M=1)
-    assert_raises(ValueError, vc.CIECAM02_to_XYZ, J=1, C=1, h=1, s=1)
-    assert_raises(ValueError, vc.CIECAM02_to_XYZ, J=1, C=1, h=1, H=1)
+    assert_raises(ValueError, vc.CIECAM02_to_XYZ100, J=1, C=1, h=1, Q=1)
+    assert_raises(ValueError, vc.CIECAM02_to_XYZ100, J=1, C=1, h=1, M=1)
+    assert_raises(ValueError, vc.CIECAM02_to_XYZ100, J=1, C=1, h=1, s=1)
+    assert_raises(ValueError, vc.CIECAM02_to_XYZ100, J=1, C=1, h=1, H=1)
 
     # Underspecified colors not allowed either
-    assert_raises(ValueError, vc.CIECAM02_to_XYZ, J=1, C=1)
-    assert_raises(ValueError, vc.CIECAM02_to_XYZ, J=1, h=1)
-    assert_raises(ValueError, vc.CIECAM02_to_XYZ, C=1, h=1)
+    assert_raises(ValueError, vc.CIECAM02_to_XYZ100, J=1, C=1)
+    assert_raises(ValueError, vc.CIECAM02_to_XYZ100, J=1, h=1)
+    assert_raises(ValueError, vc.CIECAM02_to_XYZ100, C=1, h=1)
 
 
 def test_vectorized():
-    vc = ViewingConditions.sRGB
+    vc = CIECAM02Space.sRGB
 
-    XYZs = [[20, 30, 40], [40, 30, 20]]
-    CIECAM02s = vc.XYZ_to_CIECAM02(XYZs)
+    XYZ100s = [[20, 30, 40], [40, 30, 20]]
+    CIECAM02s = vc.XYZ100_to_CIECAM02(XYZ100s)
 
-    for i, XYZ in enumerate(XYZs):
-        CIECAM02 = vc.XYZ_to_CIECAM02(XYZ)
+    for i, XYZ100 in enumerate(XYZ100s):
+        CIECAM02 = vc.XYZ100_to_CIECAM02(XYZ100)
         for j in range(len(CIECAM02)):
             assert np.allclose(CIECAM02[j], CIECAM02s[j][i])
 
-    check_roundtrip(vc, XYZs)
+    check_roundtrip(vc, XYZ100s)
 
 def test_on_negative_A():
     from nose.tools import assert_raises
 
-    vc = ViewingConditions(Illuminant.D65, 20, 30)
-    bad_XYZ = [8.71292997, 2.02183974, 83.26198455]
-    good_XYZ = [20, 30, 40]
+    vc = CIECAM02Space("D65", 20, 30)
+    bad_XYZ100 = [8.71292997, 2.02183974, 83.26198455]
+    good_XYZ100 = [20, 30, 40]
 
-    assert_raises(NegativeAError, vc.XYZ_to_CIECAM02, bad_XYZ)
-    assert_raises(NegativeAError, vc.XYZ_to_CIECAM02, [bad_XYZ, good_XYZ])
-    assert_raises(NegativeAError, vc.XYZ_to_CIECAM02, bad_XYZ,
+    assert_raises(NegativeAError, vc.XYZ100_to_CIECAM02, bad_XYZ100)
+    assert_raises(NegativeAError, vc.XYZ100_to_CIECAM02,
+                  [bad_XYZ100, good_XYZ100])
+    assert_raises(NegativeAError, vc.XYZ100_to_CIECAM02, bad_XYZ100,
                   on_negative_A="raise")
-    assert_raises(NegativeAError, vc.XYZ_to_CIECAM02, [bad_XYZ, good_XYZ],
+    assert_raises(NegativeAError, vc.XYZ100_to_CIECAM02,
+                  [bad_XYZ100, good_XYZ100],
                   on_negative_A="raise")
 
-    bad_CIECAM02 = vc.XYZ_to_CIECAM02(bad_XYZ, on_negative_A="nan")
+    bad_CIECAM02 = vc.XYZ100_to_CIECAM02(bad_XYZ100, on_negative_A="nan")
     for bad_attr in "JCQMs":
         assert np.isnan(getattr(bad_CIECAM02, bad_attr))
     assert np.allclose(bad_CIECAM02.h, 205.80008)
     assert np.allclose(bad_CIECAM02.H, 261.11054)
 
-    mixed_CIECAM02 = vc.XYZ_to_CIECAM02([bad_XYZ, good_XYZ],
-                                        on_negative_A="nan")
+    mixed_CIECAM02 = vc.XYZ100_to_CIECAM02([bad_XYZ100, good_XYZ100],
+                                           on_negative_A="nan")
     for bad_attr in "JCQMs":
         assert np.all(np.isnan(getattr(mixed_CIECAM02, bad_attr))
                       == [True, False])

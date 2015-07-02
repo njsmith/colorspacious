@@ -398,7 +398,7 @@ def _viscm_editor_axes():
     axes = {'bezier': grid[0, 0],
             'cm': grid[0, 1]}
 
-    axes = {key: plt.subplot(value) for (key, value) in axes.items()}
+    axes = dict([(key, plt.subplot(value)) for (key, value) in axes.items()])
     return axes
 
 

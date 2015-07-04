@@ -23,11 +23,11 @@ To use it, simply write::
 
   Jp, ap, bp = cspace_convert([64, 128, 255], "sRGB255", "CAM02-UCS")
 
-Converts an sRGB value (represented as integers between 0-255) to
-CAM02-UCS J'a'b' coordinates (assuming standard sRGB viewing
-conditions). This requires passing through 4 intermediate colorspaces;
-cspace_convert automatically finds the optimal route and applies all
-conversions in sequence:
+This converts an sRGB value (represented as integers between 0-255) to
+CAM02-UCS J'a'b' coordinates (by default, assuming standard sRGB
+viewing conditions). This requires passing through 4 intermediate
+colorspaces; ``cspace_convert`` automatically finds the optimal route
+and applies all conversions in sequence:
 
 This function also of course accepts arbitrary NumPy arrays, so
 converting a whole image is just as easy as converting a single value.

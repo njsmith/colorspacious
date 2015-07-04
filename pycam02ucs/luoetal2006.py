@@ -12,6 +12,11 @@ class LuoEtAl2006UniformSpace(object):
         self.c1 = c1
         self.c2 = c2
 
+    def __repr__(self):
+        return "%s(%r, %r, %r)" % (
+            self.__class__.__name__,
+            self.KL, self.c1, self.c2)
+
     def JMh_to_Jpapbp(self, JMh):
         JMh = np.asarray(JMh, dtype=float)
         J = JMh[..., 0]

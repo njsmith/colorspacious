@@ -1,13 +1,13 @@
-pycam02ucs
-==========
+colorspacious
+=============
 
-.. image:: https://travis-ci.org/njsmith/pycam02ucs.png?branch=master
-   :target: https://travis-ci.org/njsmith/pycam02ucs
-.. image:: https://coveralls.io/repos/njsmith/pycam02ucs/badge.png?branch=master
-   :target: https://coveralls.io/r/njsmith/pycam02ucs?branch=master
+.. image:: https://travis-ci.org/njsmith/colorspacious.png?branch=master
+   :target: https://travis-ci.org/njsmith/colorspacious
+.. image:: https://coveralls.io/repos/njsmith/colorspacious/badge.png?branch=master
+   :target: https://coveralls.io/r/njsmith/colorspacious?branch=master
 
-This is an powerful, accurate, and easy-to-use library for performing
-colorspace conversions.
+Colorspacious is a powerful, accurate, and easy-to-use library for
+performing colorspace conversions.
 
 In addition to the most common standard colorspaces (sRGB, XYZ, xyY,
 CIELab, CIELCh), we also include: color vision deficiency ("color
@@ -19,7 +19,7 @@ uniform CAM02-UCS / CAM02-LCD / CAM02-SCD spaces proposed by Luo et al
 
 To use it, simply write::
 
-  from pycam02ucs import cspace_convert
+  from colorspacious import cspace_convert
 
   Jp, ap, bp = cspace_convert([64, 128, 255], "sRGB255", "CAM02-UCS")
 
@@ -42,7 +42,7 @@ Downloads:
   TODO
 
 Code and bug tracker:
-  https://github.com/njsmith/pycam02ucs
+  https://github.com/njsmith/colorspacious
 
 Contact:
   Nathaniel J. Smith <njs@pobox.com>

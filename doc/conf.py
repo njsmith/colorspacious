@@ -15,6 +15,25 @@
 import sys
 import os
 
+# To make debugging on RTD easier
+print "python exec:", sys.executable
+print "sys.path:", sys.path
+try:
+    import numpy
+    print "numpy: %s, %s" % (numpy.__version__, numpy.__file__)
+except ImportError:
+    print "no numpy"
+try:
+    import matplotlib
+    print "matplotlib: %s, %s" % (matplotlib.__version__, matplotlib.__file__)
+except ImportError:
+    print "no matplotlib"
+try:
+    import IPython
+    print "ipython: %s, %s" % (IPython.__version__, IPython.__file__)
+except ImportError:
+    print "no ipython"
+
 # If extensions (or modules to document with autodoc) are in another directory,
 # add these directories to sys.path here. If the directory is relative to the
 # documentation root, use os.path.abspath to make it absolute, like shown here.
@@ -29,9 +48,19 @@ import os
 # extensions coming with Sphinx (named 'sphinx.ext.*') or your custom
 # ones.
 extensions = [
+    'sphinx.ext.autodoc',
     'sphinx.ext.intersphinx',
     'sphinx.ext.mathjax',
+    'IPython.sphinxext.ipython_directive',
+    'IPython.sphinxext.ipython_console_highlighting',
 ]
+
+# Undocumented trick: if we def setup here in conf.py, it gets called just
+# like an extension's setup function.
+def setup(app):
+    app.add_javascript("show-code.js")
+    app.add_javascript("facebox.js")
+    app.add_stylesheet("facebox.css")
 
 # Add any paths that contain templates here, relative to this directory.
 templates_path = ['_templates']
@@ -47,14 +76,17 @@ master_doc = 'index'
 
 # General information about the project.
 project = u'colorspacious'
-copyright = u'2015, Nathaniel J. Smith, Richard Futrell'
+copyright = u'2015, Colorspacious developers'
 
 # The version info for the project you're documenting, acts as replacement for
 # |version| and |release|, also used in various other places throughout the
 # built documents.
 #
 # The short X.Y version.
-version = '0.0.0'
+#version = '0.0.0'
+sys.path.insert(0, os.getcwd() + "/..")
+import pycam02ucs
+version = pycam02ucs.__version__
 # The full version, including alpha/beta/rc tags.
 release = '0.0.0'
 
@@ -244,7 +276,7 @@ man_pages = [
 #  dir menu entry, description, category)
 texinfo_documents = [
   ('index', 'colorspacious', u'colorspacious Documentation',
-   u'Nathaniel J. Smith, Richard Futrell', 'colorspacious', 'One line description of project.',
+   u'Colorspacious developers', 'colorspacious', 'One line description of project.',
    'Miscellaneous'),
 ]
 
@@ -262,4 +294,7 @@ texinfo_documents = [
 
 
 # Example configuration for intersphinx: refer to the Python standard library.
-intersphinx_mapping = {'http://docs.python.org/': None}
+intersphinx_mapping = {"python": ("http://docs.python.org/": None),
+                       "numpy": ("http://docs.scipy.org/doc/numpy",
+                                 None),
+                       }

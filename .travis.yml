@@ -27,9 +27,9 @@ install:
   - mkdir empty
   - cd empty
   - pip install ../dist/*
-  - INSTALLDIR=$(python -c "import os; import pycam02ucs; print(os.path.dirname(pycam02ucs.__file__))")
+  - INSTALLDIR=$(python -c "import os; import colorspacious; print(os.path.dirname(colorspacious.__file__))")
 script:
-  - nosetests --all-modules --with-cov --cov-conf ../.coveragerc --cov-report term-missing --cov ${INSTALLDIR} pycam02ucs
+  - nosetests --all-modules --with-cov --cov-conf ../.coveragerc --cov-report term-missing --cov ${INSTALLDIR} colorspacious
 after_success:
   - pip install coveralls && coveralls --rcfile=../.coveragerc
 notifications:

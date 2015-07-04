@@ -5,25 +5,25 @@ import os.path
 import numpy as np
 
 # Must be one line or PyPI will cut it off
-DESC = ("Compute perceptual similarity between sRGB colors according to the "
-        "CAM02-UCS formula given by Luo et al (2006)")
+DESC = ("A powerful, accurate, and easy-to-use Python library for "
+        "doing colorspace conversions")
 
 LONG_DESC = open("README.rst").read()
 
 # defines __version__
-exec(open("pycam02ucs/version.py").read())
+exec(open("colorspacious/version.py").read())
 
 setup(
-    name="pycam02ucs",
+    name="colorspacious",
     version=__version__,
     description=DESC,
     long_description=LONG_DESC,
     author="Nathaniel J. Smith",
     author_email="njs@pobox.com",
-    url="https://github.com/njsmith/pycam02ucs",
+    url="https://github.com/njsmith/colorspacious",
     license="MIT",
     classifiers =
-      [ "Development Status :: 3 - Alpha",
+      [ "Development Status :: 4 - Beta",
         "Intended Audience :: Developers",
         "Intended Audience :: Science/Research",
         "License :: OSI Approved :: MIT License",
@@ -32,5 +32,4 @@ setup(
         ],
     packages=find_packages(),
     install_requires=["numpy"],
-    package_data={'pycam02ucs': ['cm/examples/*']},
 )

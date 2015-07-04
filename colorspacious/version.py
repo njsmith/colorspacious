@@ -1,10 +1,10 @@
-# This file is part of pycam02ucs
+# This file is part of colorspacious
 # Copyright (C) 2014 Nathaniel Smith <njs@pobox.com>
 # See file LICENSE.txt for license information.
 
 # This file must be kept very simple, because it is consumed from several
-# places -- it is imported by pycam02ucs/__init__.py, execfile'd by setup.py,
-# etc.
+# places -- it is imported by colorspacious/__init__.py, execfile'd by
+# setup.py, etc.
 
 # We use a simple scheme:
 #   1.0.0 -> 1.0.0-dev -> 1.1.0 -> 1.1.0-dev

@@ -1,4 +1,4 @@
-# This file is part of pycam02ucs
+# This file is part of colorspacious
 # Copyright (C) 2015 Nathaniel Smith <njs@pobox.com>
 # See file LICENSE.txt for license information.
 

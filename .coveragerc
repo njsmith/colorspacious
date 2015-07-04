@@ -1,6 +1,6 @@
 [run]
 branch=True
-source=pycam02ucs
+source=colorspacious
 omit=
   setup.py
 

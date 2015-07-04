@@ -85,8 +85,8 @@ copyright = u'2015, Colorspacious developers'
 # The short X.Y version.
 #version = '0.0.0'
 sys.path.insert(0, os.getcwd() + "/..")
-import pycam02ucs
-version = pycam02ucs.__version__
+import colorspacious
+version = colorspacious.__version__
 # The full version, including alpha/beta/rc tags.
 release = '0.0.0'
 

@@ -30,8 +30,9 @@ example.
 .. ipython:: python
 
    import matplotlib.pyplot as plt
-   from matplotlib.cbook import get_sample_data
-   hopper_sRGB = plt.imread(get_sample_data("grace_hopper.png"))
+   # if you want this file, try:
+   #    matplotlib.cbook.get_sample_data("grace_hopper.png")
+   hopper_sRGB = plt.imread("grace_hopper.png")
 
 This image appears to have been loaded as a 3-dimensional NumPy array,
 where the last dimension contains the R, G, and B values.

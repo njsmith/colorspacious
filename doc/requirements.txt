@@ -1,0 +1,6 @@
+numpy
+matplotlib
+
+mistune
+jsonschema
+ipython

@@ -6,7 +6,7 @@ Reference
 Colorspaces
 -----------
 
-.. ipython:: python
+.. ipython::
 
    import colorspacious
    with open("_static/colorspacious.dot", "w") as f:
@@ -16,7 +16,6 @@ Colorspaces
                     "-o", "_static/colorspacious.svg"])
 
 .. image:: /_static/colorspacious.*
-   :width: 80%
 
 XX TODO
 

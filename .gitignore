@@ -1,5 +1,4 @@
 # Project-specific generated files
-/pycam02ucs/_ciecam02.c
 
 # Byte-compiled / optimized / DLL files
 __pycache__/
@@ -53,5 +52,6 @@ coverage.xml
 *.pot
 
 # Sphinx documentation
-docs/_build/
+doc/_build/
+doc/_static/hopper_*
 

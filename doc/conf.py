@@ -16,23 +16,24 @@ import sys
 import os
 
 # To make debugging on RTD easier
-print "python exec:", sys.executable
-print "sys.path:", sys.path
+print("python exec:", sys.executable)
+print("sys.path:", sys.path)
+print("current directory:", os.getcwd())
 try:
     import numpy
-    print "numpy: %s, %s" % (numpy.__version__, numpy.__file__)
+    print("numpy: %s, %s" % (numpy.__version__, numpy.__file__))
 except ImportError:
-    print "no numpy"
+    print("no numpy")
 try:
     import matplotlib
-    print "matplotlib: %s, %s" % (matplotlib.__version__, matplotlib.__file__)
+    print("matplotlib: %s, %s" % (matplotlib.__version__, matplotlib.__file__))
 except ImportError:
-    print "no matplotlib"
+    print("no matplotlib")
 try:
     import IPython
-    print "ipython: %s, %s" % (IPython.__version__, IPython.__file__)
+    print("ipython: %s, %s" % (IPython.__version__, IPython.__file__))
 except ImportError:
-    print "no ipython"
+    print("no ipython")
 
 # If extensions (or modules to document with autodoc) are in another directory,
 # add these directories to sys.path here. If the directory is relative to the
@@ -294,7 +295,7 @@ texinfo_documents = [
 
 
 # Example configuration for intersphinx: refer to the Python standard library.
-intersphinx_mapping = {"python": ("http://docs.python.org/": None),
+intersphinx_mapping = {"python": ("http://docs.python.org/", None),
                        "numpy": ("http://docs.scipy.org/doc/numpy",
                                  None),
                        }

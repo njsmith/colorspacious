@@ -17,15 +17,15 @@ complete implementation of `CIECAM02
 uniform CAM02-UCS / CAM02-LCD / CAM02-SCD spaces proposed by Luo et al
 (2006).
 
-To use it, simply write::
+To get started, simply write::
 
   from colorspacious import cspace_convert
 
   Jp, ap, bp = cspace_convert([64, 128, 255], "sRGB255", "CAM02-UCS")
 
 This converts an sRGB value (represented as integers between 0-255) to
-CAM02-UCS J'a'b' coordinates (by default, assuming standard sRGB
-viewing conditions). This requires passing through 4 intermediate
+CAM02-UCS `J'a'b'` coordinates (assuming standard sRGB viewing
+conditions by default). This requires passing through 4 intermediate
 colorspaces; ``cspace_convert`` automatically finds the optimal route
 and applies all conversions in sequence:
 
@@ -36,10 +36,10 @@ Documentation:
   TODO
 
 Installation:
-  ``pip install .``
+  ``pip install colorspacious``
 
 Downloads:
-  TODO
+  https://pypi.python.org/pypi/colorspacious/
 
 Code and bug tracker:
   https://github.com/njsmith/colorspacious
@@ -59,19 +59,19 @@ License:
 
 References:
 
-  Luo, M. R., Cui, G., & Li, C. (2006). Uniform colour spaces based on
-  CIECAM02 colour appearance model. Color Research & Application, 31(4),
-  320–330. doi:10.1002/col.20227
+  * Luo, M. R., Cui, G., & Li, C. (2006). Uniform colour spaces based on
+    CIECAM02 colour appearance model. Color Research & Application, 31(4),
+    320–330. doi:10.1002/col.20227
 
-  Machado, G. M., Oliveira, M. M., & Fernandes, L. A. (2009). A
-  physiologically-based model for simulation of color vision
-  deficiency. Visualization and Computer Graphics, IEEE Transactions on,
-  15(6), 1291–1298. http://www.inf.ufrgs.br/~oliveira/pubs_files/CVD_Simulation/CVD_Simulation.html
+  * Machado, G. M., Oliveira, M. M., & Fernandes, L. A. (2009). A
+    physiologically-based model for simulation of color vision
+    deficiency. Visualization and Computer Graphics, IEEE Transactions on,
+    15(6), 1291–1298. http://www.inf.ufrgs.br/~oliveira/pubs_files/CVD_Simulation/CVD_Simulation.html
 
-Other Python packages with similar functionality that you might also
-want to check out:
+Other Python packages with similar functionality that you might want
+to check out as well or instead:
 
-* ``colour``: http://colour-science.org/
-* ``colormath``: http://python-colormath.readthedocs.org/
-* ``ciecam02``: https://pypi.python.org/pypi/ciecam02/
-* ``ColorPy``: http://markkness.net/colorpy/ColorPy.html
+  * ``colour``: http://colour-science.org/
+  * ``colormath``: http://python-colormath.readthedocs.org/
+  * ``ciecam02``: https://pypi.python.org/pypi/ciecam02/
+  * ``ColorPy``: http://markkness.net/colorpy/ColorPy.html

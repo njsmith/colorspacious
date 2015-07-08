@@ -145,8 +145,9 @@ EDGES += pair({"name": "CIECAM02-subset",
 GRAPH = TransformGraph(EDGES,
                        # Stuff that should go on the same row of the generated
                        # graphviz plot
-                       [["sRGB1", "sRGB1+CVD"],
+                       [["sRGB255", "sRGB1", "sRGB1+CVD"],
                         ["sRGB1-linear", "sRGB1-linear+CVD"],
+                        #["XYZ1", "XYZ100"],
                     ])
 
 ALIASES = {

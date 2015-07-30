@@ -11,6 +11,7 @@ First we need to import it. The main function is
 
 .. ipython:: python
    :suppress:
+
    import numpy as np
 
 .. ipython:: python

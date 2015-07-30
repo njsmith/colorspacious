@@ -10,6 +10,10 @@ First we need to import it. The main function is
 :func:`cspace_convert`:
 
 .. ipython:: python
+   :suppress:
+   import numpy as np
+
+.. ipython:: python
 
    from colorspacious import cspace_convert
 

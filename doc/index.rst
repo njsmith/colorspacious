@@ -28,6 +28,8 @@ Contents:
 
    reference.rst
 
+   bibliography.rst
+
 Indices and tables
 ==================
 

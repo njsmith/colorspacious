@@ -19,6 +19,27 @@ import numpy as np
 # anomalies.
 
 def machado_et_al_2009_matrix(cvd_type, severity):
+    """Retrieve a matrix for simulating anomalous color vision.
+
+    :param cvd_type: One of "protanomaly", "deuteranomaly", or "tritanomaly".
+    :param severity: A value between 0 and 100.
+
+    :returns: A 3x3 CVD simulation matrix as computed by Machado et al
+             (2009).
+
+    These matrices were downloaded from:
+
+      http://www.inf.ufrgs.br/~oliveira/pubs_files/CVD_Simulation/CVD_Simulation.html
+
+    which is supplementary data from the paper:
+
+      Machado, Oliveira, & Fernandes (2009). A Physiologically-based Model for
+      Simulation of Color Vision Deficiency. doi: 10.1109/TVCG.2009.113
+
+    If severity is a multiple of 10, then simply returns the matrix from that
+    webpage. For other severities, performs linear interpolation.
+    """
+
     assert 0 <= severity <= 100
 
     fraction = severity % 10

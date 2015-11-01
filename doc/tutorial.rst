@@ -1,5 +1,5 @@
-Quickstart
-==========
+Tutorial
+========
 
 .. currentmodule:: colorspacious
 

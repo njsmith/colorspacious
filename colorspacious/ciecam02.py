@@ -424,7 +424,7 @@ CIECAM02Space.sRGB = CIECAM02Space(
     #   luminance in cd/m^2 / 5 = L_A (the "grey world assumption")
     # See Moroney (2000), "Usage guidelines for CIECAM97s".
     # sRGB illuminance is 64 lux.
-    L_A=(64 / np.pi) * 5,
+    L_A=(64 / np.pi) / 5,
     surround=CIECAM02Surround.AVERAGE)
 
 

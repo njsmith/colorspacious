@@ -18,11 +18,11 @@ def deltaE(color1, color2,
        otherwise the results of this function won't be very meaningful, but in
        fact any color space known to :func:`cspace_convert` will be accepted.
 
-    By default, computes the euclidean distance in CAM02-UCS :math:`J'M'h'`
-    space (thus giving :math:`\Delta E'`). If you want the classic
-    :math:`\Delta E^*_{ab}` defined by CIE 1976, use
-    ``uniform_space="CIELab"``. Other good choices include ``"CAM02-LCD"`` and
-    ``"CAM02-SCD"``.
+    By default, computes the euclidean distance in CAM02-UCS :math:`J'a'b'`
+    space (thus giving :math:`\Delta E'`); for details, see
+    :cite:`CAM02-UCS`. If you want the classic :math:`\Delta E^*_{ab}` defined
+    by CIE 1976, use ``uniform_space="CIELab"``. Other good choices include
+    ``"CAM02-LCD"`` and ``"CAM02-SCD"``.
 
     This function has no ability to perform :math:`\Delta E` calculations like
     CIEDE2000 that are not based on euclidean distances.
@@ -30,6 +30,7 @@ def deltaE(color1, color2,
     This function is vectorized, i.e., color1, color2 may be arrays with shape
     (..., 3), in which case we compute the distance between corresponding
     pairs of colors.
+
     """
 
     uniform1 = cspace_convert(color1, input_space, uniform_space)

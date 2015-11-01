@@ -31,10 +31,7 @@ def machado_et_al_2009_matrix(cvd_type, severity):
 
       http://www.inf.ufrgs.br/~oliveira/pubs_files/CVD_Simulation/CVD_Simulation.html
 
-    which is supplementary data from the paper:
-
-      Machado, Oliveira, & Fernandes (2009). A Physiologically-based Model for
-      Simulation of Color Vision Deficiency. doi: 10.1109/TVCG.2009.113
+    which is supplementary data from :cite:`Machado-CVD`.
 
     If severity is a multiple of 10, then simply returns the matrix from that
     webpage. For other severities, performs linear interpolation.

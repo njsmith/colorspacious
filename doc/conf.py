@@ -54,6 +54,7 @@ extensions = [
     'sphinx.ext.mathjax',
     'IPython.sphinxext.ipython_directive',
     'IPython.sphinxext.ipython_console_highlighting',
+    'sphinxcontrib.bibtex',
 ]
 
 # Undocumented trick: if we def setup here in conf.py, it gets called just

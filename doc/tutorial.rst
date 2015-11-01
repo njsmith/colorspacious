@@ -3,7 +3,18 @@ Tutorial
 
 .. currentmodule:: colorspacious
 
-Here's some cut-and-pasteable examples to give an idea what
+Colorspacious is a Python library that lets you easily convert between
+colorspaces like sRGB, XYZ, CIEL*a*b*, CIECAM02, CAM02-UCS, etc. If
+you have no idea what these are or what each is good for, and reading
+this list makes you feel like you're swimming in alphabet soup, then
+this video provides a basic orientation and some examples. (The
+overview of color theory starts at ~3:35.)
+
+.. raw:: html
+
+   <iframe width="560" height="315" src="https://www.youtube.com/embed/xAoljeRJ3lU" frameborder="0" allowfullscreen></iframe>
+
+Now let's see some cut-and-pasteable examples of what
 :mod:`colorspacious` is good for. We'll start by loading up some
 utility modules for numerics and plotting that we'll use later:
 
@@ -30,6 +41,10 @@ with values between 0 and 255) maps to `XYZ
 .. ipython:: python
 
    cspace_convert([128, 128, 128], "sRGB255", "XYZ100")
+
+Colorspacious knows about a :ref:`wide variety of colorspaces
+<supported-colorspaces>`, and you can convert between any of them by
+naming them in a call to :func:`cspace_convert`.
 
 We can also conveniently work on whole images. Let's load one up as an
 example.
@@ -271,3 +286,33 @@ when simulated by colorspacious:
 Because deuteranomaly and protanomaly are both types of red-green
 colorblindness, this is similar (but not quite identical) to the image
 we saw above.
+
+
+Color similarity
+----------------
+
+Suppose we have two colors, and we want to know how different they
+will look to a person -- often known as computing the `"delta E"
+<http://www.colorwiki.com/wiki/Delta_E:_The_Color_Difference>`_
+between them. One way to do this is to map both colors into a
+"perceptually uniform" colorspace, and then compute the Euclidean
+distance. Colorspacious provides a convenience function to do just
+this:
+
+.. ipython:: python
+
+   from colorspacious import deltaE
+
+   deltaE([1, 0.5, 0.5], [0.5, 1, 0.5])
+
+   deltaE([255, 127, 127], [127, 255, 127], input_space="sRGB255")
+
+By default, these computations are done using the CAM02-UCS
+perceptually uniform space (see :cite:`CAM02-UCS` for details), but if
+you want to use the (generally inferior) `CIEL*a*b*
+<https://en.wikipedia.org/wiki/Lab_color_space>`_, then just say the
+word:
+
+.. ipython:: python
+
+   deltaE([1, 0.5, 0.5], [0.5, 1, 0.5], uniform_space="CIELab")

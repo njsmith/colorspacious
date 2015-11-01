@@ -64,6 +64,10 @@ Notable changes since v0.1.0 include:
 
 * Substantially improved docs.
 
+* Better test coverage.
+
+* Miscellaneous bug fixes.
+
 v0.1.0
 ------
 

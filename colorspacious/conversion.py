@@ -186,8 +186,9 @@ def norm_cspace_id(cspace):
                 return cspace
             else:
                 base = norm_cspace_id(base)
-                base = dict(base)
+                cspace = dict(cspace)
                 del cspace["name"]
+                base = dict(base)
                 base.update(cspace)
                 return base
         return cspace

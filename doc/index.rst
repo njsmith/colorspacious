@@ -24,7 +24,7 @@ Contents:
 
    overview.rst
 
-   quickstart.rst
+   tutorial.rst
 
    reference.rst
 

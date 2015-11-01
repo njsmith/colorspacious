@@ -80,6 +80,8 @@ because the values appear to be encoded on a scale ranging from 0-1:
    hopper_XYZ[:2, :2, :]
 
 
+.. _tutorial-perception:
+
 Perceptual transformations
 --------------------------
 
@@ -185,6 +187,8 @@ the image by rescaling the lightness channel "J" by a factor of 2
 complement (``image_JCh[..., 2] *= -1``).
 
 
+.. _tutorial-cvd:
+
 Simulating colorblindness
 -------------------------
 
@@ -287,6 +291,8 @@ Because deuteranomaly and protanomaly are both types of red-green
 colorblindness, this is similar (but not quite identical) to the image
 we saw above.
 
+
+.. _tutorial-deltaE:
 
 Color similarity
 ----------------

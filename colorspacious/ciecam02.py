@@ -15,11 +15,16 @@ __all__ = [
     "JChQMsH",
 ]
 
+
+# F, c, Nc: surround parameters
+#            F     c      Nc
+# Average   1.0   0.69   1.0
+# Dim       0.9   0.59   0.95
+# Dark      0.8   0.525  0.8
 CIECAM02Surround = namedtuple("CIECAM02Surround", ["F", "c", "N_c"])
 CIECAM02Surround.AVERAGE = CIECAM02Surround(1.0, 0.69,  1.0)
 CIECAM02Surround.DIM     = CIECAM02Surround(0.9, 0.59,  1.95)
 CIECAM02Surround.DARK    = CIECAM02Surround(0.8, 0.525, 1.8)
-
 
 JChQMsH = namedtuple("JChQMsH", ["J", "C", "h", "Q", "M", "s", "H"])
 
@@ -67,23 +72,21 @@ def require_exactly_one(**kwargs):
                          % (", ".join(kwargs)))
 
 class NegativeAError(ValueError):
+    """A :class:`ValueError` that can be raised when converting to CIECAM02.
+
+    See :meth:`CIECAM02Space.XYZ100_to_CIECAM02` for details.
+    """
     pass
 
 class CIECAM02Space(object):
-    """
+    """An object representing a particular set of CIECAM02 viewing conditions.
 
-    Xw, Yw, Zw: whitepoint
-    Yb: background luminance
-    LA: luminance of adapting field (cd/m^2). This is defined to be 0.2 times
-      the actual luminance (in cd/m^2). Illuminance (measured in lux) can be
-      converted to luminance estimated by dividing by pi (this assumes a
-      perfectly reflecting diffuser).
+    :param XYZ100_w: The whitepoint. Either a string naming one of the known
+         standard whitepoints like ``"D65"``, or else a point in XYZ100 space.
+    :param Y_b: Background luminance.
+    :param L_A: Luminance of the adapting field (in cd/m^2).
+    :param surround: A :class:`CIECAM02Surround` object.
 
-    F, c, Nc: surround parameters
-               F     c      Nc
-    Average   1.0   0.69   1.0
-    Dim       0.9   0.59   0.95
-    Dark      0.8   0.525  0.8
     """
     def __init__(self, XYZ100_w, Y_b, L_A,
                  surround=CIECAM02Surround.AVERAGE):
@@ -140,7 +143,7 @@ class CIECAM02Space(object):
 
         Example: ``vc.XYZ100_to_CIECAM02([30.0, 45.5, 21.0])``
 
-        :arg XYZ100: An array-like of tristimulus values. These should be
+        :param XYZ100: An array-like of tristimulus values. These should be
           given on the 0-100 scale, not the 0-1 scale. The array-like should
           have shape ``(..., 3)``; e.g., you can use a simple 3-item list
           (shape = ``(3,)``), or to efficiently perform multiple computations
@@ -149,25 +152,19 @@ class CIECAM02Space(object):
           for some inputs, the achromatic signal :math:`A` can be negative,
           which makes it impossible to compute :math:`J`, :math:`C`,
           :math:`Q`, :math:`M`, or :math:`s` -- only :math:`h`: and :math:`H`
-          are spared. (See, e.g., section 2.6.4.1 of Luo & Li (2013) for
+          are spared. (See, e.g., section 2.6.4.1 of :cite:`Luo-CIECAM02` for
           discussion.) This argument allows you to specify a strategy for
           handling such points. Options are:
 
-            * ``"raise"``: throws a :class:`NegativeAError` (a subclass of
-              :class:`ValueError`)
-            * ``"nan"``: return not-a-number values for the affected
-              elements. (This may be particularly useful if converting a large
-              number of points at once.)
+          * ``"raise"``: throws a :class:`NegativeAError` (a subclass of
+            :class:`ValueError`)
+          * ``"nan"``: return not-a-number values for the affected
+            elements. (This may be particularly useful if converting a large
+            number of points at once.)
 
-        :returns: A named tuple with attributes ``J``, ``C``, ``h``, ``Q``,
-          ``M``, ``s``, and ``H``, containing the CIECAM02 appearance
-          correlates.
-
-        References:
-
-        Luo, M. R., & Li, C. (2013). CIECAM02 and Its Recent Developments. In
-        C. Fernandez-Maloigne (Ed.), *Advanced Color Image Processing and
-        Analysis* (pp. 19--58). Springer New York.
+        :returns: A named tuple of type :class:`JChQMsH`, with attributes
+          ``J``, ``C``, ``h``, ``Q``, ``M``, ``s``, and ``H`` containing the
+          CIECAM02 appearance correlates.
 
         """
 
@@ -262,9 +259,9 @@ class CIECAM02Space(object):
 
         You must specify 3 arguments:
 
-          * Exactly one of ``J`` and ``Q``
-          * Exactly one of ``C``, ``M``, and ``s``
-          * Exactly one of ``h`` and ``H``.
+        * Exactly one of ``J`` and ``Q``
+        * Exactly one of ``C``, ``M``, and ``s``
+        * Exactly one of ``h`` and ``H``.
 
         Arguments can be vectors, in which case they will be broadcast against
         each other.

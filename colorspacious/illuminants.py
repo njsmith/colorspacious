@@ -46,6 +46,7 @@ def standard_illuminant_XYZ100(name, observer="CIE 1931 2 deg"):
     coordinates (normalized to Y = 100).
 
     We currently have the following standard illuminants in our database:
+
     * ``"A"``
     * ``"C"``
     * ``"D50"``

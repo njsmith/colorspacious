@@ -7,6 +7,18 @@ import numpy as np
 from .util import stacklast, color_cart2polar, color_polar2cart
 
 class LuoEtAl2006UniformSpace(object):
+    """A uniform space based on CIECAM02.
+
+    See :cite:`CAM02-UCS` for details of the parametrization.
+
+    For most purposes you should just use one of the predefined instances of
+    this class that are exported as module-level constants:
+
+    * :data:`colorspacious.CAM02UCS`
+    * :data:`colorspacious.CAM02LCD`
+    * :data:`colorspacious.CAM02SCD`
+    """
+
     def __init__(self, KL, c1, c2):
         self.KL = KL
         self.c1 = c1

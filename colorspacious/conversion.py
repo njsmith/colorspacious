@@ -196,11 +196,38 @@ def norm_cspace_id(cspace):
         raise ValueError("unrecognized color space %r" % (cspace,))
 
 def cspace_converter(start, end):
+    """Returns a function for converting from colorspace ``start`` to
+    colorspace ``end``.
+
+    E.g., these are equivalent::
+
+        out = cspace_convert(arr, start, end)
+
+    ::
+
+        start_to_end_fn = cspace_converter(start, end)
+        out = start_to_end_fn(arr)
+
+    If you are doing a large number of conversions between the same pair of
+    spaces, then calling this function once and then using the returned
+    function repeatedly will be slightly more efficient than calling
+    :func:`cspace_convert` repeatedly. But I wouldn't bother unless you know
+    that this is a bottleneck for you, or it simplifies your code.
+
+    """
     start = norm_cspace_id(start)
     end = norm_cspace_id(end)
     return GRAPH.get_transform(start, end)
 
 def cspace_convert(arr, start, end):
+    """Converts the colors in ``arr`` from colorspace ``start`` to colorspace
+    ``end``.
+
+    :param arr: An array-like of colors.
+    :param start, end: Any supported colorspace specifiers. See
+        :ref:`supported-colorspaces` for details.
+
+    """
     converter = cspace_converter(start, end)
     return converter(arr)
 

@@ -4,3 +4,5 @@ matplotlib
 mistune
 jsonschema
 ipython
+
+sphinx_rtd_theme

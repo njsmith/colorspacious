@@ -1,4 +1,7 @@
 # Project-specific generated files
+doc/_static/colorspacious-graph.*
+# Created by emacs when editing .bib files
+doc/auto/
 
 # Byte-compiled / optimized / DLL files
 __pycache__/

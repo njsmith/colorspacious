@@ -7,8 +7,8 @@
 # setup.py, etc.
 
 # We use a simple scheme:
-#   1.0.0 -> 1.0.0-dev -> 1.1.0 -> 1.1.0-dev
-# where the -dev versions are never released into the wild, they're just what
+#   1.0.0 -> 1.0.0+dev -> 1.1.0 -> 1.1.0+dev
+# where the +dev versions are never released into the wild, they're just what
 # we stick into the VCS in between releases.
 #
 # This is compatible with PEP 440:
@@ -18,4 +18,4 @@
 # want. (Contrast with the special suffix 1.0.0.dev, which sorts *before*
 # 1.0.0.)
 
-__version__ = "0.1.0+dev"
+__version__ = "1.0.0"

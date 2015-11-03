@@ -11,11 +11,11 @@ library for performing colorspace conversions.
 
 In addition to the most common standard colorspaces (sRGB, XYZ, xyY,
 CIELab, CIELCh), we also include: color vision deficiency ("color
-blindness") simulations using the approach of Machado et al (2009); a
+blindness") simulations using the approach of :cite:`Machado-CVD`; a
 complete implementation of `CIECAM02
 <https://en.wikipedia.org/wiki/CIECAM02>`_; and the perceptually
-uniform CAM02-UCS / CAM02-LCD / CAM02-SCD spaces proposed by Luo et al
-(2006).
+uniform CAM02-UCS / CAM02-LCD / CAM02-SCD spaces proposed by
+:cite:`CAM02-UCS`.
 
 Contents:
 

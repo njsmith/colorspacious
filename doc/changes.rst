@@ -16,8 +16,8 @@ Notable changes since v0.1.0 include:
   sRGB standard assumes that you are looking at your monitor in a dim
   environment, like a movie theatre; we were calculating as if you
   were looking at your monitor in an environment that was 125 times
-  lighter -- so perhaps indoors, but on a nice sunny day with the
-  curtains open). This bug is corrected in this release.
+  lighter -- something like, outside on an overcast day). This bug is
+  corrected in this release.
 
   Fortunately this turns out to have had a negligible effect on
   viridis and the other matplotlib colormaps that were computed using
@@ -33,7 +33,7 @@ Notable changes since v0.1.0 include:
   this can be accomplished by instantiating a custom
   :class:`CIECAM02Space` object::
 
-      from colorspacious import CIECAM02Space, CIECAM02Surround
+      from colorspacious import CIECAM02Space
       # almost, but not quite, the sRGB viewing conditions:
       buggy_space = CIECAM02Space(
           XYZ100_w="D65",
@@ -62,9 +62,11 @@ Notable changes since v0.1.0 include:
 * :func:`colorspacious.deltaE` is now available as a convenience
   function for computing the perceptual distance between colors.
 
-* Substantially improved docs.
+* Substantially improved docs (i.e. there is now actually a
+  comprehensive manual).
 
-* Better test coverage.
+* Better test coverage (currently at 100% statement and branch
+  coverage).
 
 * Miscellaneous bug fixes.
 

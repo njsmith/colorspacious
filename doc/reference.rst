@@ -43,7 +43,7 @@ to :func:`cspace_convert`::
    {"name": "CIELab", "XYZ100_w": "D65"}
    {"name": "CIELab", "XYZ100_w": [95.047, 100, 108.883]}
 
-These dictionaries always have a "name" key specifying the
+These dictionaries always have a ``"name"`` key specifying the
 colorspace. Every bold-faced string in the above image is a recognized
 colorspace name. Some spaces take additional parameters beyond the
 name, such as the CIELab whitepoint above. These additional parameters
@@ -83,9 +83,9 @@ out long dicts in most cases. In particular:
   This allows you to directly use common shorthands like ``"JCh"`` or
   ``"JMh"`` as first-class colorspaces.
 
-Any other string ``"foo"``: expands to ``{"name": "foo"}``. So for any
+Any other string ``"foo"`` expands to ``{"name": "foo"}``. So for any
 space that doesn't take parameters, you can simply say ``"sRGB1"`` or
-``"XYZ100"`` or whatever.
+``"XYZ100"`` or whatever and ignore all these complications.
 
 And, as one final trick, any alias can also be used as the ``"name"``
 field in a colorspace dict, in which case its normal expansion is
@@ -116,24 +116,29 @@ Well-known colorspaces
 ......................
 
 **sRGB1**, **sRGB100**: The standard `sRGB colorspace
-<https://en.wikipedia.org/wiki/SRGB>`_. Use ``sRGB1`` if you have or
-want values that are normalized to fall between 0 and 1, and use
-``sRGB255`` if you have or want values that are normalized to fall
-between 0 and 255. This is designed to match the behavior of common
-monitors.
+<https://en.wikipedia.org/wiki/SRGB>`_. If you have generic "RGB"
+values with no further information specified, then usually the right
+thing to do is to assume that they are in the sRGB space; the sRGB
+space was originally designed to match the behavior of common consumer
+monitors, and these days common consumer monitors are designed to
+match sRGB. Use ``sRGB1`` if you have or want values that are
+normalized to fall between 0 and 1, and use ``sRGB255`` if you have or
+want values that are normalized to fall between 0 and 255.
 
 **XYZ100**, **XYZ1**: The standard `CIE 1931 XYZ color space
 <https://en.wikipedia.org/wiki/CIE_1931_color_space>`_. Use ``XYZ100``
 if you have or want values that are normalized to fall between 0 and
-100 (or so -- values greater than 100 are valid in certain cases). Use
-``XYZ1`` if you have or want values that are normalized to fall
-between 0 and 1 (or so). This is a space which is "linear-light",
-i.e. related by a linear transformation to the photon counts in a
-spectral power distribution.
+100 (roughly speaking -- values greater than 100 are valid in certain
+cases). Use ``XYZ1`` if you have or want values that are normalized to
+fall between 0 and 1 (roughly). This is a space which is
+"linear-light", i.e. related by a linear transformation to the photon
+counts in a spectral power distribution. In particular, this means
+that linear interpolation in this space is a valid way to simulate
+physical mixing of lights.
 
 **sRGB1-linear**: A linear-light version of **sRGB1**, i.e., it has
-had gamma correction applied, but retains the standard sRGB
-primaries.
+had gamma correction applied, but is still represented in terms of the
+standard sRGB primaries.
 
 **xyY100**, **xyY1**: The standard `CIE 1931 xyY color space
 <https://en.wikipedia.org/wiki/CIE_1931_color_space#CIE_xy_chromaticity_diagram_and_the_CIE_xyY_color_space>`_. *The
@@ -143,12 +148,12 @@ and use ``xyY1`` if you have or want a Y value that falls between 0
 and 1.
 
 **CIELab**: The standard `CIE 1976 L*a*b* color space
-<https://en.wikipedia.org/wiki/Lab_color_space>`_. L* is scaled to vary
-from 0 to 100; a* and b* are likewise scaled to (very roughly) -50
-to 50. This space takes a parameter, *XYZ100_w*, which is the
-reference point, and may be specified either directly as a tristimulus
-value or as a string naming one of the well-known standard illuminants
-like ``"D65"``.
+<https://en.wikipedia.org/wiki/Lab_color_space>`_. L* is scaled to
+vary from 0 to 100; a* and b* are likewise scaled to roughly the
+range -50 to 50. This space takes a parameter, *XYZ100_w*, which sets
+the reference white point, and may be specified either directly as a
+tristimulus value or as a string naming one of the well-known standard
+illuminants like ``"D65"``.
 
 **CIELCh**: Cylindrical version of **CIELab**. Accepts the same
 parameters. h* is in degrees.
@@ -170,13 +175,23 @@ This is generally done by specifying a colorspace like::
 where ``<type>`` is one of the following strings:
 
 * ``"protanomaly"``: A common form of red-green colorblindness;
-  affects ~2% of white men to some degree (less common among
-  ethnicities, much less common among women).
+  affects ~2% of white men to some degree (less common among other
+  ethnicities, much less common among women, see Tables 1.5 and 1.6 in
+  :cite:`Sharpe-CVD`).
 * ``"deuteranomaly"``: The most common form of red-green
   colorblindness; affects ~6% of white men to some degree (less common
-  among other ethnicities, much less common among women).
-* ``"tritanomaly"``: A very rare form of blue-yellow colorblindness;
-  affects <0.1% of people.
+  among other ethnicities, much less common among women, see Tables
+  1.5 and 1.6 in :cite:`Sharpe-CVD`).
+* ``"tritanomaly"``: A very rare form of colorblindness affecting
+  blue/yellow discrimination -- so rare that its detailed effects and
+  even rate of occurrence are not well understood. Affects <0.1% of
+  people, possibly much less (:cite:`Sharpe-CVD`, page 47). Also, the
+  name we use here is somewhat misleading because only full
+  trit\ **anopia** has been documented, and partial trit\ **anomaly**
+  likely does not exist (:cite:`Sharpe-CVD`, page 45). What this means
+  is that while Colorspacious will happily allow any severity value to
+  be passed, probably only severity = 100 corresponds to any real
+  people.
 
 And ``<severity>`` is any number between 0 (indicating regular vision)
 and 100 (indicating complete dichromacy).
@@ -198,12 +213,12 @@ CIECAM02
 `CIECAM02 <https://en.wikipedia.org/wiki/CIECAM02>`_ is a
 standardized, rather complex, state-of-the-art color appearance model,
 i.e., it's not useful for describing the voltage that should be
-applied to a phosphorescent element in your monitor (like RGB), and
-it's not useful for describing the quantity of photons flying through
-the air (like XYZ), but it is very useful to tell you what a color
-will look like subjectively to a human observer, under a certain set
-of viewing conditions. Unfortunately this makes it rather complicated,
-because human vision is rather complicated.
+applied to a phosphorescent element in your monitor (like RGB was
+originally designed to do), and it's not useful for modelling physical
+properties of light (like XYZ), but it is very useful to tell you what
+a color will look like subjectively to a human observer, under a
+certain set of viewing conditions. Unfortunately this makes it rather
+complicated, because human vision is rather complicated.
 
 If you just want a better replacement for traditional ad hoc spaces
 like "Hue/Saturation/Value", then use the string ``"JCh"`` for your
@@ -226,7 +241,7 @@ can instantiate your own :class:`CIECAM02Space` object:
       specified in the sRGB standard. (The sRGB standard defines two
       things: how a standard monitor should respond to different RGB
       values, and a standard set of viewing conditions in which you
-      are supposed to look at such a monitor, which attempt to
+      are supposed to look at such a monitor, and that attempt to
       approximate the average conditions in which people actually do
       look at such monitors. This object encodes the latter.)
 
@@ -270,7 +285,7 @@ object of class :class:`JChQMsH`:
 
    A namedtuple with a mnemonic name: it has attributes ``J``, ``C``,
    ``h``, ``Q``, ``M``, ``s``, and ``H``, each of which holds a scalar
-   or NumPy array representing the lightness, chroma, hue angle,
+   or NumPy array representing lightness, chroma, hue angle,
    brightness, colorfulness, saturation, and hue composition,
    respectively.
 
@@ -317,11 +332,13 @@ Perceptually uniform colorspaces based on CIECAM02
 The :math:`J'a'b'` spaces proposed by :cite:`CAM02-UCS` are
 high-quality, approximately perceptually uniform spaces based on
 CIECAM02. They propose three variants: CAM02-LCD optimized for "large
-color differences" (e.g., how similar is blue to green), CAM02-SCD
-optimized for "small color differences" (e.g., how similar is lightish
-greenish blue to lightish bluish green), and CAM02-UCS which attempts
-to provide a single "uniform color space" that is less optimized for
-either case but provides acceptable performance in general.
+color differences" (e.g., estimating the similarity between blue and
+green), CAM02-SCD optimized for "small color differences" (e.g.,
+estimating the similarity between light blue with a faint greenish
+cast and light blue with a faint purpleish cast), and CAM02-UCS which
+attempts to provide a single "uniform color space" that is less
+optimized for either case but provides acceptable performance in
+general.
 
 Colorspacious represents these spaces as instances of
 :class:`LuoEtAl2006UniformSpace`:
@@ -329,8 +346,8 @@ Colorspacious represents these spaces as instances of
 .. autoclass:: LuoEtAl2006UniformSpace
 
 Because these spaces are defined as transformations from CIECAM02, to
-use them you must also specify some particular CIECAM02 viewing
-conditions, e.g.::
+have a fully specified color space you must also provide some
+particular CIECAM02 viewing conditions, e.g.::
 
   {"name": "J'a'b'",
    "ciecam02_space": CIECAM02.sRGB,

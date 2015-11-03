@@ -144,9 +144,40 @@ And now we'll use it to look at the desaturated image we computed above:
 
 The original version is on the left, with our modified version on the
 right. Notice how in the version with reduced chroma, the colors are
-more muted, but not entirely gone. Of course we could also reduce the
-chroma all the way to zero, for a highly accurate greyscale
-conversion:
+more muted, but not entirely gone.
+
+Except, there is one oddity -- notice the small cyan patches on her
+collar and hat. This occurs due to floating point rounding error
+creating a few points with sRGB values that are greater than 1, which
+causes matplotlib to render the points in a strange way:
+
+.. ipython:: python
+
+   hopper_desat_sRGB[np.any(hopper_desat_sRGB > 1, axis=-1), :]
+
+Colorspacious doesn't do anything to clip such values, since they can
+sometimes be useful for further processing -- e.g. when chaining
+multiple conversions together, you don't want to clip between
+intermediate steps, because this might introduce errors. And
+potentially you might want to handle them in some clever way (`there's
+a whole literature on how to solve such problems
+<https://en.wikipedia.org/wiki/Color_management#Gamut_mapping>`_). But
+in this case, where the values are only just barely over 1, then
+simply clipping them to 1 is probably the best approach, and you can
+easily do this yourself. In fact, NumPy provides a standard function
+that we can use:
+
+.. ipython:: python
+
+   @savefig hopper_desat_clipped.png width=6in
+   compare_hoppers(np.clip(hopper_desat_sRGB, 0, 1))
+
+No more cyan splotches!
+
+Once we know how to represent an image in terms of
+lightness/chroma/hue, then there's all kinds of things we can
+do. Let's try reducing the chroma all the way to zero, for a highly
+accurate greyscale conversion:
 
 .. ipython:: python
 
@@ -154,32 +185,7 @@ conversion:
    hopper_greyscale_JCh[..., 1] = 0
    hopper_greyscale_sRGB = cspace_convert(hopper_greyscale_JCh, "JCh", "sRGB1")
    @savefig hopper_greyscale_unclipped.png width=6in
-   compare_hoppers(hopper_greyscale_sRGB)
-
-But notice the small cyan patches on her collar and hat --
-this occurs due to floating point rounding error creating a few points
-with sRGB values that are greater than 1, which causes matplotlib to
-render the points in a strange way:
-
-.. ipython:: python
-
-   hopper_greyscale_sRGB[np.any(hopper_greyscale_sRGB > 1, axis=-1), :]
-
-Colorspacious doesn't do anything to clip such values, since they can
-sometimes be useful for further processing -- e.g. when chaining
-multiple conversions together, you don't want to clip between
-intermediate steps, because this might introduce errors. And
-potentially you might want to handle them in some clever way
-(e.g. rescaling your whole image). But in this case, where the values
-are only just barely over 1, then simply clipping them to 1 is
-probably the best approach, and you can easily do this yourself:
-
-.. ipython:: python
-
-   @savefig hopper_greyscale_clipped.png width=6in
    compare_hoppers(np.clip(hopper_greyscale_sRGB, 0, 1))
-
-No more cyan splotches!
 
 To explore, try applying other transformations. E.g., you could darken
 the image by rescaling the lightness channel "J" by a factor of 2

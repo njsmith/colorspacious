@@ -4,6 +4,9 @@ Changes
 v1.0.0
 ------
 
+.. image:: https://zenodo.org/badge/doi/10.5281/zenodo.33086.svg
+   :target: http://dx.doi.org/10.5281/zenodo.33086
+
 Notable changes since v0.1.0 include:
 
 * **BUG AFFECTING CALCULATIONS:** the sRGB viewing conditions

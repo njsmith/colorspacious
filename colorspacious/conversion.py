@@ -107,7 +107,7 @@ def _CIECAM02_subset_to_XYZ100(subset, ciecam02_space, axes):
     if subset.shape[-1] != len(axes):
         raise ValueError("shape mismatch: last dimension of color array is "
                          "%s, but need %s for %r"
-                         % subset.shape[-1], len(axes), axes)
+                         % (subset.shape[-1], len(axes), axes))
     for i, coord in enumerate(axes):
         kwargs[coord] = subset[..., i]
     return ciecam02_space.CIECAM02_to_XYZ100(**kwargs)
@@ -238,6 +238,12 @@ def check_cspace_convert(source_cspace, target_cspace, gold, **kwargs):
         return cspace_convert(target_values, target_cspace, source_cspace)
     check_conversion(forward, reverse, gold, **kwargs)
 
+def test_cspace_convert_trivial():
+    check_cspace_convert("sRGB1", "sRGB1",
+                         [([0.1, 0.2, 0.3], [0.1, 0.2, 0.3]),
+                          ([0.3, 0.2, 0.1], [0.3, 0.2, 0.1]),
+                          ])
+
 def test_cspace_convert_long_paths():
     from .gold_values import sRGB1_xyY100_gold
     check_cspace_convert("sRGB1", "xyY100", sRGB1_xyY100_gold,
@@ -348,3 +354,53 @@ def test_cspace_convert_long_paths():
     check_cspace_convert("JMh", "CAM02-SCD", JMh_to_CAM02SCD_silver,
                          a_max=[100, 100, 360],
                          b_min=[0, -30, -30], b_max=[100, 30, 30])
+
+    # CVD
+    from .gold_values import CVD_deut50_to_sRGB1_silver
+    check_cspace_convert(
+        {"name": "sRGB1+CVD", "cvd_type": "deuteranomaly", "severity": 50},
+        "sRGB1",
+        CVD_deut50_to_sRGB1_silver,
+    )
+    from .gold_values import CVD_prot95_to_sRGB1_silver
+    check_cspace_convert(
+        {"name": "sRGB1+CVD", "cvd_type": "protanomaly", "severity": 95},
+        "sRGB1",
+        CVD_prot95_to_sRGB1_silver,
+    )
+
+def test_CIECAM02_subset_error_checking():
+    from nose.tools import assert_raises
+    assert_raises(ValueError,
+                  cspace_convert, np.ones((5, 4)), "JCh", "XYZ100")
+
+def test_name_aliases():
+    # "CAM02-UCS" is not a primitive name, but rather an alias
+    # nonetheless it should be accepted as a "name" key, with any extra fields
+    # provided overriding the defaults
+    from .gold_values import JMh_to_CAM02UCS_silver
+    check_cspace_convert("JMh", "CAM02-UCS", JMh_to_CAM02UCS_silver,
+                         a_max=[100, 100, 360],
+                         b_min=[0, -30, -30], b_max=[100, 30, 30])
+    check_cspace_convert("JMh", {"name": "CAM02-UCS"},
+                         JMh_to_CAM02UCS_silver,
+                         a_max=[100, 100, 360],
+                         b_min=[0, -30, -30], b_max=[100, 30, 30])
+
+    weird_space = CIECAM02Space("D65", 25, 30)
+    assert np.allclose(
+        cspace_convert([0.1, 0.2, 0.3],
+                       "sRGB1",
+                       {"name": "CAM02-UCS",
+                        "ciecam02_space": weird_space}),
+        cspace_convert([0.1, 0.2, 0.3],
+                       "sRGB1",
+                       {"name": "J'a'b'",
+                        "ciecam02_space": weird_space,
+                        "luoetal2006_space": CAM02UCS}))
+
+    from nose.tools import assert_raises
+    assert_raises(ValueError,
+                  cspace_convert, [1, 2, 3], "sRGB255", object())
+    assert_raises(ValueError,
+                  cspace_convert, [1, 2, 3], "sRGB255", "qwertyuiop")

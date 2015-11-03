@@ -91,6 +91,8 @@ class CIECAM02Space(object):
     def __init__(self, XYZ100_w, Y_b, L_A,
                  surround=CIECAM02Surround.AVERAGE):
         self.XYZ100_w = as_XYZ100_w(XYZ100_w)
+        # as_XYZ100_w allows for multiple whitepoints to be returned, but we
+        # aren't vectorized WRT whitepoint
         if self.XYZ100_w.shape != (3,):
             raise ValueError("Hey! XYZ100_w should have shape (3,)!")
         self.Y_b = float(Y_b)
@@ -469,6 +471,27 @@ def test_inverse():
                     for XYZ100 in XYZ100_values:
                         check_roundtrip(vc, XYZ100)
 
+def test_misc():
+    from nose.tools import assert_raises
+    # Only one whitepoint can be specified
+    assert_raises(ValueError, CIECAM02Space,
+                  [[20, 100, 80], [80, 100, 20]], 20, 30)
+
+    # smoke test
+    repr(CIECAM02Space.sRGB)
+    repr(CIECAM02Space("D65", 20, 4, surround=CIECAM02Surround.DIM))
+
+    # input shape check
+    assert_raises(ValueError,
+                  CIECAM02Space.sRGB.XYZ100_to_CIECAM02,
+                  np.ones((10, 4)))
+
+    # on_negative_A validity check
+    assert_raises(ValueError,
+                  CIECAM02Space.sRGB.XYZ100_to_CIECAM02,
+                  np.ones((10, 3)),
+                  on_negative_A="asdfasdf")
+
 def test_exactly_one():
     from nose.tools import assert_raises
     vc = CIECAM02Space.sRGB
@@ -483,7 +506,6 @@ def test_exactly_one():
     assert_raises(ValueError, vc.CIECAM02_to_XYZ100, J=1, C=1)
     assert_raises(ValueError, vc.CIECAM02_to_XYZ100, J=1, h=1)
     assert_raises(ValueError, vc.CIECAM02_to_XYZ100, C=1, h=1)
-
 
 def test_vectorized():
     vc = CIECAM02Space.sRGB

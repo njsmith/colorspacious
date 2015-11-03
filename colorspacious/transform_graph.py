@@ -18,7 +18,7 @@ class Placeholder(object):
     def __init__(self, id):
         self.id = id
 
-    def __repr__(self):
+    def __repr__(self):  # pragma: no cover
         return "<{0}>".format(self.id)
 
 MATCH = Placeholder("MATCH")
@@ -629,7 +629,7 @@ class TransformGraph(object):
         start_name = start["name"]
         end_name = end["name"]
         best_path = None
-        for path in self._shortest_paths[(start_name, end_name)]:
+        for path in self._shortest_paths.get((start_name, end_name), []):
             if path_matches(path, start, end):
                 if best_path is None or len(best_path.nodes) > len(path.nodes):
                     best_path = path

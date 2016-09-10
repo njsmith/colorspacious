@@ -19,7 +19,7 @@ take additional parameters, and it can convert freely between any of
 them. Here's an image showing all the known spaces, and the conversion
 paths used. (This graph is generated directly from the source code:
 when you request a conversion between two spaces,
-:func:`convert_cspace` automatically traverses this graph to find the
+:func:`cspace_convert` automatically traverses this graph to find the
 best conversion path. This makes it very easy to add support for new
 colorspaces.)
 

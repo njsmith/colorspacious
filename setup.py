@@ -8,7 +8,8 @@ import numpy as np
 DESC = ("A powerful, accurate, and easy-to-use Python library for "
         "doing colorspace conversions")
 
-LONG_DESC = open("README.rst").read()
+import codecs
+LONG_DESC = codecs.open("README.rst", encoding="utf-8").read()
 
 # defines __version__
 exec(open("colorspacious/version.py").read())

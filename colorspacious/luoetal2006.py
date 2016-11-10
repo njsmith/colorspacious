@@ -52,8 +52,8 @@ class LuoEtAl2006UniformSpace(object):
         return stacklast(J, M, h)
 
 CAM02UCS = LuoEtAl2006UniformSpace(1.00, 0.007, 0.0228)
-CAM02LCD = LuoEtAl2006UniformSpace(1.24, 0.007, 0.0363)
-CAM02SCD = LuoEtAl2006UniformSpace(0.77, 0.007, 0.0053)
+CAM02LCD = LuoEtAl2006UniformSpace(0.77, 0.007, 0.0053)
+CAM02SCD = LuoEtAl2006UniformSpace(1.24, 0.007, 0.0363)
 
 def test_repr():
     # smoke test

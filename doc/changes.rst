@@ -1,8 +1,8 @@
 Changes
 =======
 
-v1.1.0 (not yet released)
--------------------------
+v1.1.0
+------
 
 * **BUG AFFECTING CALCULATIONS:** In previous versions, it turns out
   that the CAM02-LCD and CAM02-SCD spaces were accidentally swapped –

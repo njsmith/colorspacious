@@ -13,6 +13,9 @@ colorspacious
    :target: http://colorspacious.readthedocs.io/en/latest/?badge=latest
    :alt: Documentation Status
 
+.. image:: https://zenodo.org/badge/38525000.svg
+   :target: https://zenodo.org/badge/latestdoi/38525000
+
 Colorspacious is a powerful, accurate, and easy-to-use library for
 performing colorspace conversions.
 

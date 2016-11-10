@@ -4,6 +4,9 @@ Changes
 v1.1.0
 ------
 
+.. image:: https://zenodo.org/badge/DOI/10.5281/zenodo.165867.svg
+   :target: https://doi.org/10.5281/zenodo.165867
+
 * **BUG AFFECTING CALCULATIONS:** In previous versions, it turns out
   that the CAM02-LCD and CAM02-SCD spaces were accidentally swapped –
   so if you asked for CAM02-LCD you got SCD, and vice-versa. This has

@@ -451,8 +451,7 @@ def test_gold():
     for t in XYZ100_CIECAM02_gold:
         got = t.vc.XYZ100_to_CIECAM02(t.XYZ100)
         for i in range(len(got)):
-            if t.expected[i] is not None:
-                assert np.allclose(got[i], t.expected[i], atol=1e-05)
+            assert np.allclose(got[i], t.expected[i], atol=1e-05)
         check_roundtrip(t.vc, t.XYZ100)
 
 def test_inverse():

@@ -1,10 +1,17 @@
 colorspacious
 =============
 
-.. image:: https://travis-ci.org/njsmith/colorspacious.png?branch=master
+.. image:: https://travis-ci.org/njsmith/colorspacious.svg?branch=master
    :target: https://travis-ci.org/njsmith/colorspacious
-.. image:: https://coveralls.io/repos/njsmith/colorspacious/badge.png?branch=master
-   :target: https://coveralls.io/r/njsmith/colorspacious?branch=master
+   :alt: Automated test status
+
+.. image:: https://codecov.io/gh/njsmith/colorspacious/branch/master/graph/badge.svg
+   :target: https://codecov.io/gh/njsmith/colorspacious
+   :alt: Test coverage
+
+.. image:: https://readthedocs.org/projects/colorspacious/badge/?version=latest
+   :target: http://colorspacious.readthedocs.io/en/latest/?badge=latest
+   :alt: Documentation Status
 
 Colorspacious is a powerful, accurate, and easy-to-use library for
 performing colorspace conversions.

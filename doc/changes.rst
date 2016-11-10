@@ -1,6 +1,20 @@
 Changes
 =======
 
+v1.1.0 (not yet released)
+-------------------------
+
+* **BUG AFFECTING CALCULATIONS:** In previous versions, it turns out
+  that the CAM02-LCD and CAM02-SCD spaces were accidentally swapped –
+  so if you asked for CAM02-LCD you got SCD, and vice-versa. This has
+  now been corrected. (Thanks to Github user TFiFiE for catching
+  this!)
+
+* Fixed setup.py to be compatible with both python 2 and python 3.
+
+* Miscellaneous documentation improvements.
+
+
 v1.0.0
 ------
 
@@ -72,6 +86,7 @@ Notable changes since v0.1.0 include:
   coverage).
 
 * Miscellaneous bug fixes.
+
 
 v0.1.0
 ------

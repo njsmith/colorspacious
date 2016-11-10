@@ -358,6 +358,14 @@ As usual, you can also pass any instance of
 like the above, or for the three common variants you can pass the
 strings ``"CAM02-UCS"``, ``"CAM02-LCD"``, or ``"CAM02-SCD"``.
 
+.. versionchanged:: 1.1.0
+
+   In v1.0.0 and earlier, colorspacious's definitions of the
+   ``CAM02-LCD`` and ``CAM02-SCD`` spaces were swapped compared to
+   what they should have been based on the :cite:`CAM02-UCS` – i.e.,
+   if you asked for LCD, you got SCD, and vice-versa. (``CAM02-UCS``
+   was correct, though). Starting in 1.1.0, all three spaces are now
+   correct.
 
 Color difference computation
 ----------------------------

@@ -31,7 +31,7 @@ install:
 script:
   - nosetests --all-modules --with-cov --cov-conf ../.coveragerc --cov-report term-missing --cov ${INSTALLDIR} colorspacious
 after_success:
-  - pip install coveralls && coveralls --rcfile=../.coveragerc
+  - pip install codecov && codecov
 notifications:
   email:
   - njs@pobox.com

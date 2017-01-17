@@ -35,6 +35,15 @@ try:
 except ImportError:
     print("no ipython")
 
+# This is a horrible hack that I'm pretty sure is incorrect, but somehow it
+# works around (what I think is) a bug in IPython.sphinxext.ipython_directive.
+# Without this the tutorial images don't show up -- maybe it tries to write
+# them to _build/html/_static, but the _static dir doesn't exist yet? And
+# anyway they end up getting delivered in _images/, not _static/? So with this
+# they get written into _build/html/, and then copied to
+# _build/html/_images/. Sure, why not.
+ipython_savefig_dir = "."
+
 # If extensions (or modules to document with autodoc) are in another directory,
 # add these directories to sys.path here. If the directory is relative to the
 # documentation root, use os.path.abspath to make it absolute, like shown here.

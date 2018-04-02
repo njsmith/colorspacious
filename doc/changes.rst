@@ -4,6 +4,9 @@ Changes
 v1.1.1
 ------
 
+.. image:: https://zenodo.org/badge/DOI/10.5281/zenodo.1211038.svg
+   :target: https://doi.org/10.5281/zenodo.1211038
+
 * **BUG AFFECTING CALCULATIONS:** In previous versions, the constants
   ``CIECAM02Surround.DIM`` and ``CIECAM02Surround.DARK`` were
   incorrect due to a data entry error. Fortunately,

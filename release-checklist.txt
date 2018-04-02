@@ -1,0 +1,16 @@
+ 1. Update doc/changes.rst
+ 2. Bump version in colorspacious/_version.py
+ 3. git clean -xdn
+ 4. git clean -xdf
+ 5. python setup.py sdist bdist_wheel
+ 6. twine upload dist/*
+ 7. git tag v{...}
+ 8. git push --tags
+ 9. Go to github, make a "release" (this triggers zenodo)
+10. Bump version again by adding +dev
+11. Go to
+     https://zenodo.org/account/settings/github/repository/njsmith/colorspacious
+    to get the release info.
+    Click the "DOI: ..." link, then click the blue DOI badge to get
+    the ReST markup, then add it to changes.rst
+12. Commit, push.

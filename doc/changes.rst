@@ -1,6 +1,19 @@
 Changes
 =======
 
+v1.1.1
+------
+
+* **BUG AFFECTING CALCULATIONS:** In previous versions, the constants
+  ``CIECAM02Surround.DIM`` and ``CIECAM02Surround.DARK`` were
+  incorrect due to a data entry error. Fortunately,
+  ``CIECAM02Surround.AVERAGE`` *was* correct, and this is the default,
+  so unless you have explicitly been requesting ``DIM`` or ``DARK``
+  surrounds in your CIECAM02 calculations, then you should be
+  unaffected by this bug. (Thanks to `Brian Deiterle
+  <https://github.com/briend>`__ for catching this!)
+
+
 v1.1.0
 ------
 

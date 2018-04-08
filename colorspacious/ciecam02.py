@@ -19,11 +19,11 @@ __all__ = [
 # F, c, Nc: surround parameters
 #            F     c      Nc
 # Average   1.0   0.69   1.0
-# Dim       0.9   0.59   0.95
+# Dim       0.9   0.59   0.9
 # Dark      0.8   0.525  0.8
 CIECAM02Surround = namedtuple("CIECAM02Surround", ["F", "c", "N_c"])
 CIECAM02Surround.AVERAGE = CIECAM02Surround(1.0, 0.69,  1.0)
-CIECAM02Surround.DIM     = CIECAM02Surround(0.9, 0.59,  0.95)
+CIECAM02Surround.DIM     = CIECAM02Surround(0.9, 0.59,  0.9)
 CIECAM02Surround.DARK    = CIECAM02Surround(0.8, 0.525, 0.8)
 
 JChQMsH = namedtuple("JChQMsH", ["J", "C", "h", "Q", "M", "s", "H"])

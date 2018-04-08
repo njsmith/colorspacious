@@ -1,6 +1,24 @@
 Changes
 =======
 
+v1.1.2
+------
+
+* **BUG AFFECTING CALCULATIONS:** As a result of the scrutiny
+  triggered by the v1.1.1 release, we discovered that the reference
+  article that colorspacious (and other libraries) was using as a
+  source for the ``CIECAM02Surround.DIM`` constant values was *itself*
+  incorrect. It has now been corrected, and verified against CIE
+  159:2004. See `#14
+  <https://github.com/njsmith/colorspacious/issues/14>`__ for details,
+  and thanks to Thomas Mansencal and Mark Fairchild for helping sort
+  this out.
+
+  Like the bug fix in v1.1.1, this doesn't affect most calculations;
+  it only matters if you were explicitly choosing the
+  ``CIECAM02Surround.DIM`` viewing conditions.
+
+
 v1.1.1
 ------
 

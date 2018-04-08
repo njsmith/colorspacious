@@ -4,6 +4,9 @@ Changes
 v1.1.2
 ------
 
+.. image:: https://zenodo.org/badge/DOI/10.5281/zenodo.1214904.svg
+   :target: https://doi.org/10.5281/zenodo.1214904
+
 * **BUG AFFECTING CALCULATIONS:** As a result of the scrutiny
   triggered by the v1.1.1 release, we discovered that the reference
   article that colorspacious (and other libraries) was using as a

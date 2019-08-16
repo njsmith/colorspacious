@@ -149,8 +149,9 @@ and 1.
 
 **CIELab**: The standard `CIE 1976 L*a*b* color space
 <https://en.wikipedia.org/wiki/Lab_color_space>`_. L* is scaled to
-vary from 0 to 100; a* and b* are likewise scaled to roughly the
-range -50 to 50. This space takes a parameter, *XYZ100_w*, which sets
+vary from 0 to 100; This color space is unbounded. 
+For sRGB, the values of a* and b* will be roughly in the range [-100, 100].
+This space takes a parameter, *XYZ100_w*, which sets
 the reference white point, and may be specified either directly as a
 tristimulus value or as a string naming one of the well-known standard
 illuminants like ``"D65"``.

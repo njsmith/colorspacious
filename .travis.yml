@@ -1,12 +1,8 @@
 language: python
 python:
-  - 2.6
   - 2.7
-  - 3.3
-  - 3.4
-# give up the ability to use 'sudo' in exchange for getting access to
-# the newer/faster/better-scaling travis infrastructure
-sudo: false
+  - 3.6
+  - 3.7
 before_install:
   # Escape Travis virtualenv
   - deactivate
